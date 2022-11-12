@@ -27,6 +27,6 @@ public class Point: PhysicsPart
     }
     public override void ChangePosition()
     {
-        pos = pos + movement * Time.deltaTime;
+        pos = pos + movement * Time.deltaTime * 0.1f;
     }
 }

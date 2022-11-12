@@ -70,7 +70,7 @@ public abstract class Force
 public abstract class PhysicsPart
 {
     public bool debugDisableMovement = false;
-    public static float friction = 0.9f;
+    public static float friction = 0.99f;
     public List<Force> staticForces = new List<Force>();
     public List<Effector> effectors = new List<Effector>();
     public Vector3 forceDirection;
