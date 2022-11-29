@@ -8,18 +8,50 @@ public class PhysicsManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        Point P1 = new Point(new Vector3(0, 0, 0));
-        P1.staticForces.Add(new Gravity());
-        Point P2 = new Point(new Vector3(0, 5, 0));
-        Point P3 = new Point(new Vector3(5, 5, 0));
-        P3.staticForces.Add(new Gravity());
-        P2.debugDisableMovement = true;
-        Connector C1 = new Connector(P1, P2, new List<Force>());
-        Connector C2 = new Connector(P1, P3, new List<Force>());
-        Connector C3 = new Connector(P2, P3, new List<Force>());
-        C1.forces.Add(new Elasticity(P1,P2,2.5f,3f));
-        C2.forces.Add(new Elasticity(P1, P3, 0.5f, 7f));
-        C3.forces.Add(new Elasticity(P2, P3, 2.5f, 3f));
+        Point[,] points = new Point[15, 15];
+        for (int i = 0; i < 15; i++)
+        {
+            for (int j = 0; j < 15; j++)
+            {
+                if (i!=0)
+                {
+                    points[i,j] = new Point(new Vector3(j * 5, i * -5, 0));
+                }
+                else
+                {
+                    points[i, j] = new Point(new Vector3(j * 5, i * -5, 0));
+                    points[i,j].debugDisableMovement = true;
+                }
+                points[i, j].staticForces.Add(new Gravity());
+            }
+        }
+        List<Connector> connectors = new List<Connector>();
+        for (int i = 0; i < 15; i++)
+        {
+            for (int j = 0; j < 15; j++)
+            {
+                if (i<14)
+                {
+                    Connector connector = new Connector(points[i, j], points[i + 1, j], new List<Force>());
+                    connector.forces.Add(new Elasticity(points[i, j], points[i + 1, j], 5.5f, 5f));
+                }
+                if (j < 14)
+                {
+                    Connector connector = new Connector(points[i, j], points[i, j+1], new List<Force>());
+                    connector.forces.Add(new Elasticity(points[i, j], points[i, j+1], 5.5f, 5f));
+                }
+                if (i<14 && j<14)
+                {
+                    Connector connector = new Connector(points[i, j], points[i+1, j + 1], new List<Force>());
+                    connector.forces.Add(new Elasticity(points[i, j], points[i+1, j + 1], 5.5f, 7f));
+                }
+                if (i < 14 && j >0)
+                {
+                    Connector connector = new Connector(points[i, j], points[i + 1, j - 1], new List<Force>());
+                    connector.forces.Add(new Elasticity(points[i, j], points[i + 1, j - 1], 5.5f, 7f));
+                }
+            }
+        }
     }
 
     // Update is called once per frame
