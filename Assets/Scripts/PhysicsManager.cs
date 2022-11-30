@@ -6,7 +6,7 @@ public class PhysicsManager : MonoBehaviour
 {
     public static List<PhysicsPart> activePhysicsParts = new List<PhysicsPart>();
     // Start is called before the first frame update
-    void Start()
+    /*void Start()
     {
         Point[,] points = new Point[15, 15];
         for (int i = 0; i < 15; i++)
@@ -53,12 +53,7 @@ public class PhysicsManager : MonoBehaviour
             }
         }
     }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+    */
     private void FixedUpdate()
     {
         foreach (PhysicsPart part in activePhysicsParts)

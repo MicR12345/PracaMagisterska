@@ -14,6 +14,7 @@ public class Effector
 public class Point: PhysicsPart
 {
     public Vector3 pos;
+    public List<int> VertsIndexes = new List<int>();
     public override List<Vector3> Position()
     {
         List<Vector3> list = new List<Vector3>();

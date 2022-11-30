@@ -20,14 +20,16 @@ public class Connector
             endPart.effectors.Add(e2);
         }
     }
-    public Connector(PhysicsPart physicsPart1, PhysicsPart physicsPart2, List<Force> forces, int startConnectionNumber = 0,
+    public Connector(PhysicsPart physicsPart1, PhysicsPart physicsPart2, int startConnectionNumber = 0,
         int endConnectionNumber = 0)
     {
         this.startPart = physicsPart1;
         this.endPart = physicsPart2;
-        this.forces = forces;
+        this.forces = new List<Force>();
         this.startHandleNumber = startConnectionNumber;
         this.endHandleNumber = endConnectionNumber;
+        physicsPart1.connected.Add(physicsPart2);
+        physicsPart2.connected.Add(physicsPart1);
         GameObject gameObject = new GameObject("Connector");
         connectorScript = gameObject.AddComponent<ConnectorObject>();
         connectorScript.Initialize(this);
@@ -75,6 +77,7 @@ public abstract class PhysicsPart
     public List<Effector> effectors = new List<Effector>();
     public Vector3 forceDirection;
     public Vector3 movement = Vector3.zero;
+    public List<PhysicsPart> connected = new List<PhysicsPart>();
     public void ApplyStaticEffectors()
     {
         foreach (Force force in staticForces)
