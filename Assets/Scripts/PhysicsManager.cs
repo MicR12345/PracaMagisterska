@@ -60,8 +60,16 @@ public class PhysicsManager : MonoBehaviour
         {
             part.ApplyStaticEffectors();
             //part.CalculatePhysics();
-            part.CalculateMovement();
             part.ChangePosition();
+        }
+    }
+    private void OnDrawGizmos()
+    {
+        foreach (PhysicsPart item in activePhysicsParts)
+        {
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawCube(item.Position()[0], new Vector3(0.3f,0.3f,0.3f));
+            Gizmos.color = Color.gray;
         }
     }
 }
