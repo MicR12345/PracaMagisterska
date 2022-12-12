@@ -1,7 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using System.Linq;
 public class FabricSimulator : MonoBehaviour
 {
     public bool elastic = true;
@@ -41,7 +42,7 @@ public class FabricSimulator : MonoBehaviour
         bool[] repeatedPoint = new bool[points.Count];
         for (int i = 0; i < points.Count; i++)
         {
-            if (i == 0)
+            if (i==0)
             {
                 points[i].debugDisableMovement = true;
             }
@@ -122,12 +123,12 @@ public class FabricSimulator : MonoBehaviour
         {
             if (i==0)
             {
-                maxDist = Vector3.Distance(points[0].Position()[0],transform.position);
-                minDist = Vector3.Distance(points[0].Position()[0], transform.position);
+                maxDist = points[0].Position()[0].x + points[0].Position()[0].y + points[0].Position()[0].z;
+                minDist = points[0].Position()[0].x + points[0].Position()[0].y + points[0].Position()[0].z;
                 transformVec = points[0].Position()[0];
                 transformVec2 = points[0].Position()[0];
             }
-            float thisDist = Vector3.Distance(points[i].Position()[0], transform.position);
+            float thisDist = points[i].Position()[0].x + points[i].Position()[0].y + points[i].Position()[0].z;
             if (thisDist < minDist)
             {
                 minDist = thisDist;
@@ -139,7 +140,7 @@ public class FabricSimulator : MonoBehaviour
                 transformVec2 = points[i].Position()[0];
             }
         }
-        Vector3 moveVector = (transformVec + transformVec2) / 2;
+        Vector3 moveVector = (transformVec + transformVec2)/2;
         foreach (Point item in points)
         {
             item.pos = item.pos - moveVector;
@@ -149,5 +150,44 @@ public class FabricSimulator : MonoBehaviour
             item.pos = item.pos - moveVector;
         }
         transform.position = transform.position + moveVector;
+        Bounds bounds = new Bounds();
+        bounds.center = moveVector;
+        bounds.size = transformVec - transformVec2;
+        skinnedMeshRenderer.localBounds = bounds;
     }
+    public int[] FindAdjacentVertices(Vector3 v, Mesh m)
+    {
+        Dictionary<int, int> adjacentVertices = new Dictionary<int, int>();
+
+        // Find the index of vertex v. We do this by min-distance search rather than directly comparing x,y,z coordinates
+        // since floating-point equality comparison is rarely reliable.
+        int iNearest = -1;
+        float dNearest = Single.MaxValue;
+        for (int i = 0; i < m.vertices.Length; i++)
+        {
+            float d = Vector3.Distance(v, m.vertices[i]);
+            if (d < dNearest)
+            {
+                dNearest = d;
+                iNearest = i;
+            }
+        }
+
+        // Find the index of all vertices adjacent to v. Every triangle that shares vertex v has two vertices that are adjacent to v.
+        for (int j = 0; j < m.triangles.Length-3; j++)
+        {
+            if (m.triangles[j] == iNearest)
+            {
+                int adjacent0 = m.triangles[j + ((j + 1) % 3)];
+                int adjacent1 = m.triangles[j + ((j + 2) % 3)];
+                if (adjacentVertices.ContainsKey(adjacent0) == false)
+                    adjacentVertices.Add(adjacent0, adjacent0);
+                if (adjacentVertices.ContainsKey(adjacent1) == false)
+                    adjacentVertices.Add(adjacent1, adjacent1);
+            }
+        }
+
+        return adjacentVertices.Values.ToArray();
+    }
+
 }
