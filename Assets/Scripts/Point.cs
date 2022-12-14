@@ -20,8 +20,9 @@ public class Point: PhysicsPart
         list.Add(pos);
         return list;
     }
-    public Point(Vector3 pos)
+    public Point(Vector3 pos,GameObject gameObject)
     {
+        this.gameObject = gameObject;
         this.pos = pos;
     }
     public override void ChangePosition()
@@ -42,6 +43,7 @@ public class CombinedPoint : PhysicsPart
     }
     public CombinedPoint(List<Point> pointss)
     {
+        gameObject = pointss[0].gameObject;
         foreach (Point item in pointss)
         {
             this.points.Add(item);

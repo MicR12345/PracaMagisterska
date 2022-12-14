@@ -12,6 +12,7 @@ public class FabricSimulator : MonoBehaviour
     Mesh meshCloned;
     SkinnedMeshRenderer skinnedMeshRenderer;
     public List<Point> points = new List<Point>();
+    public int[] CombinedPointsMap;
     public List<Connector> connectors = new List<Connector>();
     public List<CombinedPoint> combinedPoints = new List<CombinedPoint>();
     private void Start()
@@ -36,9 +37,10 @@ public class FabricSimulator : MonoBehaviour
     {
         for (int i = 0; i < verts.Length; i++)
         {
-            Point p = new Point(verts[i]);
+            Point p = new Point(verts[i],this.gameObject);
             points.Add(p);
         }
+        CombinedPointsMap = new int[points.Count];
         bool[] repeatedPoint = new bool[points.Count];
         for (int i = 0; i < points.Count; i++)
         {
@@ -48,6 +50,7 @@ public class FabricSimulator : MonoBehaviour
             }
             if (!repeatedPoint[i])
             {
+                CombinedPointsMap[i] = i;
                 List<Point> list = new List<Point>();
                 for (int j = 0; j < points.Count; j++)
                 {
@@ -55,6 +58,7 @@ public class FabricSimulator : MonoBehaviour
                     {
                         list.Add(points[j]);
                         repeatedPoint[j] = true;
+                        CombinedPointsMap[j] = i;
                     }
                 }
                 CombinedPoint combinedPoint = new CombinedPoint(list);
@@ -72,23 +76,143 @@ public class FabricSimulator : MonoBehaviour
     }
     public void TransformTrianglesIntoConnectors(int[] triangles,Vector3[] verts)
     {
+        for (int i = 0; i < triangles.Length; i += 3)
+        {
+            if (!points[CombinedPointsMap[triangles[i]]].connected.Contains(points[CombinedPointsMap[triangles[i+1]]]))
+            {
+                Connector connector = new Connector(points[CombinedPointsMap[triangles[i]]], points[CombinedPointsMap[triangles[i + 1]]], this.gameObject);
+                connectors.Add(connector);
+            }
+            if (!points[triangles[i]].connected.Contains(points[CombinedPointsMap[triangles[i + 2]]]))
+            {
+                Connector connector = new Connector(points[CombinedPointsMap[triangles[i]]], points[CombinedPointsMap[triangles[i + 2]]], this.gameObject);
+                connectors.Add(connector);
+            }
+            if (!points[CombinedPointsMap[triangles[i+1]]].connected.Contains(points[CombinedPointsMap[triangles[i + 2]]]))
+            {
+                Connector connector = new Connector(points[CombinedPointsMap[triangles[i+1]]], points[CombinedPointsMap[triangles[i + 2]]], this.gameObject);
+                connectors.Add(connector);
+            }
+        }
+        List<(int,int)> MissingConnections = new List<(int, int)> ();
         for (int i = 0; i < triangles.Length; i+=3)
         {
-            if (!points[triangles[i]].connected.Contains(points[triangles[i+1]]))
+            for (int j = 0; j < triangles.Length; j+=3)
             {
-                Connector connector = new Connector(points[triangles[i]], points[triangles[i + 1]],this.gameObject);
-                connectors.Add(connector);
+                if (i==j)
+                {
+                    continue;
+                }
+                else
+                {
+                    if (CombinedPointsMap[triangles[i]] == CombinedPointsMap[triangles[j]] && CombinedPointsMap[triangles[i +1]] == CombinedPointsMap[triangles[j +1]] 
+                        || CombinedPointsMap[triangles[i + 1]] == CombinedPointsMap[triangles[j]] && CombinedPointsMap[triangles[i]] == CombinedPointsMap[triangles[j + 1]])
+                    {
+                        (int, int) c = (CombinedPointsMap[triangles[i + 2]], CombinedPointsMap[triangles[j + 2]]);
+                        (int, int) c2 = (CombinedPointsMap[triangles[j + 2]], CombinedPointsMap[triangles[i + 2]]);
+                        if (!MissingConnections.Contains(c))
+                        {
+                            MissingConnections.Add(c);
+                            MissingConnections.Add(c2);
+                        }
+                    }
+                    else if(CombinedPointsMap[triangles[i]] == CombinedPointsMap[triangles[j +1]] && CombinedPointsMap[triangles[i + 1]] == CombinedPointsMap[triangles[j + 2]] 
+                        || CombinedPointsMap[triangles[i+1]] == CombinedPointsMap[triangles[j + 1]] && CombinedPointsMap[triangles[i]] == CombinedPointsMap[triangles[j + 2]])
+                    {
+                        (int, int) c = (CombinedPointsMap[triangles[i + 2]], CombinedPointsMap[triangles[j]]);
+                        (int, int) c2 = (CombinedPointsMap[triangles[j]], CombinedPointsMap[triangles[i + 2]]);
+                        if (!MissingConnections.Contains(c))
+                        {
+                            MissingConnections.Add(c);
+                            MissingConnections.Add(c2);
+                        }
+                    }
+                    else if (CombinedPointsMap[triangles[i]] == CombinedPointsMap[triangles[j]] && CombinedPointsMap[triangles[i + 1]] == CombinedPointsMap[triangles[j + 2]] 
+                        || CombinedPointsMap[triangles[i+ 1]] == CombinedPointsMap[triangles[j]] && CombinedPointsMap[triangles[i]] == CombinedPointsMap[triangles[j + 2]])
+                    {
+                        (int, int) c = (CombinedPointsMap[triangles[i + 2]], CombinedPointsMap[triangles[j + 1]]);
+                        (int, int) c2 = (CombinedPointsMap[triangles[j + 1]], CombinedPointsMap[triangles[i + 2]]);
+                        if (!MissingConnections.Contains(c))
+                        {
+                            MissingConnections.Add(c);
+                            MissingConnections.Add(c2);
+                        }
+                    }
+                    if (CombinedPointsMap[triangles[i +1]] == CombinedPointsMap[triangles[j]] && CombinedPointsMap[triangles[i + 2]] == CombinedPointsMap[triangles[j + 1]] 
+                        || CombinedPointsMap[triangles[i + 2]] == CombinedPointsMap[triangles[j]] && CombinedPointsMap[triangles[i + 1]] == CombinedPointsMap[triangles[j + 1]])
+                    {
+                        (int, int) c = (CombinedPointsMap[triangles[i]], CombinedPointsMap[triangles[j + 2]]);
+                        (int, int) c2 = (CombinedPointsMap[triangles[j + 2]], CombinedPointsMap[triangles[i]]);
+                        if (!MissingConnections.Contains(c))
+                        {
+                            MissingConnections.Add(c);
+                            MissingConnections.Add(c2);
+                        }
+                    }
+                    else if (CombinedPointsMap[triangles[i +1]] == CombinedPointsMap[triangles[j + 1]] && CombinedPointsMap[triangles[i + 2]] == CombinedPointsMap[triangles[j + 2]] 
+                        || CombinedPointsMap[triangles[i + 2]] == CombinedPointsMap[triangles[j + 1]] && CombinedPointsMap[triangles[i + 1]] == CombinedPointsMap[triangles[j + 2]])
+                    {
+                        (int, int) c = (CombinedPointsMap[triangles[i]], CombinedPointsMap[triangles[j]]);
+                        (int, int) c2 = (CombinedPointsMap[triangles[j]], CombinedPointsMap[triangles[i]]);
+                        if (!MissingConnections.Contains(c))
+                        {
+                            MissingConnections.Add(c);
+                            MissingConnections.Add(c2);
+                        }
+                    }
+                    else if (CombinedPointsMap[triangles[i +1]] == CombinedPointsMap[triangles[j]] && CombinedPointsMap[triangles[i + 2]] == CombinedPointsMap[triangles[j + 2]] 
+                        || CombinedPointsMap[triangles[i + 2]] == CombinedPointsMap[triangles[j]] && CombinedPointsMap[triangles[i + 1]] == CombinedPointsMap[triangles[j + 2]])
+                    {
+                        (int, int) c = (CombinedPointsMap[triangles[i]], CombinedPointsMap[triangles[j + 1]]);
+                        (int, int) c2 = (CombinedPointsMap[triangles[j + 1]], CombinedPointsMap[triangles[i]]);
+                        if (!MissingConnections.Contains(c))
+                        {
+                            MissingConnections.Add(c);
+                            MissingConnections.Add(c2);
+                        }
+                    }
+                    
+                    if (CombinedPointsMap[triangles[i]] == CombinedPointsMap[triangles[j]] && CombinedPointsMap[triangles[i + 2]] == CombinedPointsMap[triangles[j + 1]] 
+                        || CombinedPointsMap[triangles[i + 2]] == CombinedPointsMap[triangles[j]] && CombinedPointsMap[triangles[i]] == CombinedPointsMap[triangles[j + 1]])
+                    {
+                        (int, int) c = (CombinedPointsMap[triangles[i + 1]], CombinedPointsMap[triangles[j + 2]]);
+                        (int, int) c2 = (CombinedPointsMap[triangles[j + 2]], CombinedPointsMap[triangles[i + 1]]);
+                        if (!MissingConnections.Contains(c))
+                        {
+                            MissingConnections.Add(c);
+                            MissingConnections.Add(c2);
+                        }
+                    }
+                    else if (CombinedPointsMap[triangles[i]] == CombinedPointsMap[triangles[j + 1]] && CombinedPointsMap[triangles[i + 2]] == CombinedPointsMap[triangles[j + 2]]
+                        || CombinedPointsMap[triangles[i+ 2]] == CombinedPointsMap[triangles[j + 1]] && CombinedPointsMap[triangles[i]] == CombinedPointsMap[triangles[j + 2]])
+                    {
+                        (int, int) c = (CombinedPointsMap[triangles[i + 1]], CombinedPointsMap[triangles[j]]);
+                        (int, int) c2 = (CombinedPointsMap[triangles[j]], CombinedPointsMap[triangles[i + 1]]);
+                        if (!MissingConnections.Contains(c))
+                        {
+                            MissingConnections.Add(c);
+                            MissingConnections.Add(c2);
+                        }
+                    }
+                    else if (CombinedPointsMap[triangles[i]] == CombinedPointsMap[triangles[j]] && CombinedPointsMap[triangles[i + 2]] == CombinedPointsMap[triangles[j + 2]]
+                        || CombinedPointsMap[triangles[i + 2]] == CombinedPointsMap[triangles[j]] && CombinedPointsMap[triangles[i]] == CombinedPointsMap[triangles[j + 2]])
+                    {
+                        (int, int) c = (CombinedPointsMap[triangles[i + 1]], CombinedPointsMap[triangles[j + 1]]);
+                        (int, int) c2 = (CombinedPointsMap[triangles[j + 1]], CombinedPointsMap[triangles[i + 1]]);
+                        if (!MissingConnections.Contains(c))
+                        {
+                            MissingConnections.Add(c);
+                            MissingConnections.Add(c2);
+                        }
+                    }
+                    
+                }
             }
-            if (!points[triangles[i+1]].connected.Contains(points[triangles[i + 2]]))
-            {
-                Connector connector = new Connector(points[triangles[i+1]], points[triangles[i + 2]], this.gameObject);
-                connectors.Add(connector);
-            }
-            if (!points[triangles[i]].connected.Contains(points[triangles[i + 2]]))
-            {
-                Connector connector = new Connector(points[triangles[i]], points[triangles[i + 2]], this.gameObject);
-                connectors.Add(connector);
-            }
+        }
+        for (int i = 0; i < MissingConnections.Count; i+=2)
+        {
+            Connector connector = new Connector(points[MissingConnections[i].Item1], points[MissingConnections[i].Item2], this.gameObject);
+            connectors.Add(connector);
         }
     }
     public void AddForces()
@@ -155,39 +279,4 @@ public class FabricSimulator : MonoBehaviour
         bounds.size = transformVec - transformVec2;
         skinnedMeshRenderer.localBounds = bounds;
     }
-    public int[] FindAdjacentVertices(Vector3 v, Mesh m)
-    {
-        Dictionary<int, int> adjacentVertices = new Dictionary<int, int>();
-
-        // Find the index of vertex v. We do this by min-distance search rather than directly comparing x,y,z coordinates
-        // since floating-point equality comparison is rarely reliable.
-        int iNearest = -1;
-        float dNearest = Single.MaxValue;
-        for (int i = 0; i < m.vertices.Length; i++)
-        {
-            float d = Vector3.Distance(v, m.vertices[i]);
-            if (d < dNearest)
-            {
-                dNearest = d;
-                iNearest = i;
-            }
-        }
-
-        // Find the index of all vertices adjacent to v. Every triangle that shares vertex v has two vertices that are adjacent to v.
-        for (int j = 0; j < m.triangles.Length-3; j++)
-        {
-            if (m.triangles[j] == iNearest)
-            {
-                int adjacent0 = m.triangles[j + ((j + 1) % 3)];
-                int adjacent1 = m.triangles[j + ((j + 2) % 3)];
-                if (adjacentVertices.ContainsKey(adjacent0) == false)
-                    adjacentVertices.Add(adjacent0, adjacent0);
-                if (adjacentVertices.ContainsKey(adjacent1) == false)
-                    adjacentVertices.Add(adjacent1, adjacent1);
-            }
-        }
-
-        return adjacentVertices.Values.ToArray();
-    }
-
 }

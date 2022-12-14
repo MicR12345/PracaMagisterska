@@ -62,6 +62,13 @@ public class ConnectorObject: MonoBehaviour
             i++;
         }
     }
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawLine(connectorHandle.startPart.gameObject.transform.position + connectorHandle.startPart.Position()[0],
+            connectorHandle.endPart.gameObject.transform.position + connectorHandle.endPart.Position()[0]);
+        Gizmos.color = Color.gray;
+    }
 }
 public abstract class Force
 {
@@ -75,6 +82,7 @@ public abstract class PhysicsPart
     public Vector3 forceDirection;
     public Vector3 movement = Vector3.zero;
     public List<PhysicsPart> connected = new List<PhysicsPart>();
+    public GameObject gameObject;
     public void ApplyStaticEffectors()
     {
         foreach (Force force in staticForces)
