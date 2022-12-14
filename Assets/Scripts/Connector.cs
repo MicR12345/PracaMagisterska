@@ -10,24 +10,28 @@ public class Connector
     int endHandleNumber = 0;
     public List<Force> forces;
     public GameObject connectorObject;
+    public GameObject connectedObject;
     public ConnectorObject connectorScript;
     public void RecalculateForces()
     {
         foreach (Force f in forces)
         {
             (Effector e1, Effector e2) = f.GenerateEffectors();
-            startPart.effectors.Add(e1);
-            endPart.effectors.Add(e2);
+            startPart.movement = startPart.movement * PhysicsPart.friction + e1.direction.normalized * e1.strenght;
+            endPart.movement = endPart.movement * PhysicsPart.friction + e2.direction.normalized * e2.strenght;
         }
     }
-    public Connector(PhysicsPart physicsPart1, PhysicsPart physicsPart2, List<Force> forces, int startConnectionNumber = 0,
+    public Connector(PhysicsPart physicsPart1, PhysicsPart physicsPart2,GameObject connectedObject, int startConnectionNumber = 0,
         int endConnectionNumber = 0)
     {
         this.startPart = physicsPart1;
         this.endPart = physicsPart2;
-        this.forces = forces;
+        this.forces = new List<Force>();
         this.startHandleNumber = startConnectionNumber;
         this.endHandleNumber = endConnectionNumber;
+        this.connectedObject = connectedObject;
+        physicsPart1.connected.Add(physicsPart2);
+        physicsPart2.connected.Add(physicsPart1);
         GameObject gameObject = new GameObject("Connector");
         connectorScript = gameObject.AddComponent<ConnectorObject>();
         connectorScript.Initialize(this);
@@ -41,26 +45,29 @@ public class ConnectorObject: MonoBehaviour
     public void Initialize(Connector connector)
     {
         connectorHandle = connector;
+        this.transform.parent = connector.connectedObject.transform;
         isInitialized = true;
     }
+    int i = 0;
     private void FixedUpdate()
     {
-        connectorHandle.RecalculateForces();
+        
+        if (i==5)
+        {
+            connectorHandle.RecalculateForces();
+            i = 0;
+        }
+        else
+        {
+            i++;
+        }
     }
     private void OnDrawGizmos()
     {
-        if (isInitialized)
-        {
-            foreach (Vector3 item in connectorHandle.startPart.Position())
-            {
-                Gizmos.DrawSphere(item, 0.3f);
-            }
-            foreach (Vector3 item in connectorHandle.endPart.Position())
-            {
-                Gizmos.DrawSphere(item, 0.3f);
-            }
-            Gizmos.DrawLine(connectorHandle.startPart.Position()[0], connectorHandle.endPart.Position()[0]);
-        }
+        Gizmos.color = Color.red;
+        Gizmos.DrawLine(connectorHandle.startPart.gameObject.transform.position + connectorHandle.startPart.Position()[0],
+            connectorHandle.endPart.gameObject.transform.position + connectorHandle.endPart.Position()[0]);
+        Gizmos.color = Color.gray;
     }
 }
 public abstract class Force
@@ -70,66 +77,20 @@ public abstract class Force
 public abstract class PhysicsPart
 {
     public bool debugDisableMovement = false;
-    public static float friction = 0.9f;
+    public static float friction = 0.99f;
     public List<Force> staticForces = new List<Force>();
-    public List<Effector> effectors = new List<Effector>();
     public Vector3 forceDirection;
     public Vector3 movement = Vector3.zero;
+    public List<PhysicsPart> connected = new List<PhysicsPart>();
+    public GameObject gameObject;
     public void ApplyStaticEffectors()
     {
         foreach (Force force in staticForces)
         {
-            effectors.Add(force.GenerateEffectors().Item1);
+            Effector e = force.GenerateEffectors().Item1;
+            movement = movement * PhysicsPart.friction + e.direction.normalized * e.strenght;
         }
     }
-    /*public void CalculatePhysics()
-    {
-        if(effectors.Count > 1)
-        {
-            Vector3 force = Vector3.zero;
-            for (int i = 1; i < effectors.Count; i++)
-            {
-                float angle = Vector3.Angle(Vector3.up,
-                effectors[i].direction.normalized * effectors[i].strenght);
-                force = force + effectors[i].strenght * Mathf.Cos(angle); 
-            }
-            for (int i = 2; i < effectors.Count; i++)
-            {
-                crossProduct = Vector3.Cross(crossProduct,
-                effectors[i].direction.normalized * effectors[i].strenght);
-            }
-            forceDirection = crossProduct;
-        }
-        else if(effectors.Count == 1)
-        {
-            forceDirection = effectors[0].direction.normalized * effectors[0].strenght;
-        }
-        else
-        {
-            forceDirection = Vector3.zero;
-        }
-    }
-    */
-
     public abstract List<Vector3> Position();
-    public void CalculateMovement()
-    {
-        if (!debugDisableMovement)
-        {
-            foreach (Effector effector in effectors)
-            {
-                movement = movement * PhysicsPart.friction + effector.direction.normalized * effector.strenght;
-            }
-        }
-        else
-        {
-            movement = Vector3.zero;
-        }
-        effectors.Clear();
-    }
-    /*public void CalculateMovement()
-    {
-        movement = movement * PhysicsPart.friction + forceDirection;
-    }*/
     public abstract void ChangePosition();
 }
