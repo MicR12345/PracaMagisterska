@@ -5,6 +5,7 @@ using UnityEngine;
 public class PhysicsManager : MonoBehaviour
 {
     public static List<PhysicsPart> activePhysicsParts = new List<PhysicsPart>();
+    public static float movementToleranceDampening = 0.01f;
     // Start is called before the first frame update
     /*void Start()
     {
@@ -68,7 +69,7 @@ public class PhysicsManager : MonoBehaviour
         foreach (PhysicsPart item in activePhysicsParts)
         {
             Gizmos.color = Color.yellow;
-            Gizmos.DrawCube(item.gameObject.transform.position + item.Position()[0], new Vector3(0.3f,0.3f,0.3f));
+            //Gizmos.DrawCube(item.gameObject.transform.position + item.Position()[0], new Vector3(0.3f,0.3f,0.3f));
             Gizmos.color = Color.gray;
         }
     }

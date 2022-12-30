@@ -28,7 +28,10 @@ public class Point: PhysicsPart
     public override void ChangePosition()
     {
         if(!debugDisableMovement)
-        pos = pos + movement * Time.deltaTime * 0.1f;
+            if (Mathf.Abs(movement.x + movement.y + movement.z) > PhysicsManager.movementToleranceDampening)
+            {
+                pos = pos + movement * Time.deltaTime * PhysicsPart.timeScale;
+            }
     }
 }
 public class CombinedPoint : PhysicsPart
@@ -65,8 +68,10 @@ public class CombinedPoint : PhysicsPart
                 movement = movement + item.movement;
                 item.movement = Vector3.zero;
             }
-
-            pos = pos + movement * Time.deltaTime * 0.1f;
+            if (Mathf.Abs(movement.x + movement.y + movement.z) > PhysicsManager.movementToleranceDampening)
+            {
+                pos = pos + movement * Time.deltaTime * PhysicsPart.timeScale;
+            }
             foreach (Point item in points)
             {
                 item.pos = pos;
