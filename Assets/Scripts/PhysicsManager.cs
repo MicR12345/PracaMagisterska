@@ -67,9 +67,9 @@ public class PhysicsManager : MonoBehaviour
     {
         foreach (PhysicsPart item in activePhysicsParts)
         {
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawCube(item.gameObject.transform.position + item.Position()[0], new Vector3(0.3f,0.3f,0.3f));
-            Gizmos.color = Color.gray;
+            //Gizmos.color = Color.yellow;
+            //Gizmos.DrawCube(item.gameObject.transform.position + item.Position()[0], new Vector3(0.3f,0.3f,0.3f));
+            //Gizmos.color = Color.gray;
         }
     }
 }

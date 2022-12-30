@@ -20,15 +20,31 @@ public class Point: PhysicsPart
         list.Add(pos);
         return list;
     }
-    public Point(Vector3 pos,GameObject gameObject)
+    public Point(Vector3 pos,GameObject gameObject, ref Mesh mesh)
     {
         this.gameObject = gameObject;
         this.pos = pos;
+        this.mesh = mesh;
     }
     public override void ChangePosition()
     {
-        if(!debugDisableMovement)
-        pos = pos + movement * Time.deltaTime * 0.1f;
+        if (!debugDisableMovement)
+        {
+            int i = 0;
+            Vector3 newPosition = pos + movement * Mathf.Pow(Time.deltaTime, 2) * 0.7f;
+            while (CheckIfPointColidesWithAnyTriangle(newPosition))
+            {
+                newPosition = newPosition * 0.5f;
+                i++;
+                if (i == 10)
+                    break;
+            }
+
+            if(i != 10)
+            {
+                pos = newPosition;
+            }
+        }
     }
 }
 public class CombinedPoint : PhysicsPart
@@ -41,8 +57,9 @@ public class CombinedPoint : PhysicsPart
         list.Add(pos);
         return list;
     }
-    public CombinedPoint(List<Point> pointss)
+    public CombinedPoint(List<Point> pointss, ref Mesh mesh)
     {
+        this.mesh = mesh;
         gameObject = pointss[0].gameObject;
         foreach (Point item in pointss)
         {
@@ -66,7 +83,21 @@ public class CombinedPoint : PhysicsPart
                 item.movement = Vector3.zero;
             }
 
-            pos = pos + movement * Time.deltaTime * 0.1f;
+            int i = 0;
+            Vector3 newPosition = pos + movement * Mathf.Pow(Time.deltaTime, 2) * 0.7f;
+            while (CheckIfPointColidesWithAnyTriangle(newPosition))
+            {
+                newPosition = newPosition * 0.5f;
+                i++;
+                if (i == 10)
+                    break;
+            }
+
+            if (i != 10)
+            {
+                pos = newPosition;
+            }
+
             foreach (Point item in points)
             {
                 item.pos = pos;

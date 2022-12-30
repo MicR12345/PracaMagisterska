@@ -37,7 +37,7 @@ public class FabricSimulator : MonoBehaviour
     {
         for (int i = 0; i < verts.Length; i++)
         {
-            Point p = new Point(verts[i],this.gameObject);
+            Point p = new Point(verts[i],this.gameObject, ref mesh);
             points.Add(p);
         }
         CombinedPointsMap = new int[points.Count];
@@ -61,7 +61,7 @@ public class FabricSimulator : MonoBehaviour
                         CombinedPointsMap[j] = i;
                     }
                 }
-                CombinedPoint combinedPoint = new CombinedPoint(list);
+                CombinedPoint combinedPoint = new CombinedPoint(list, ref mesh);
                 combinedPoint.staticForces.Add(new Gravity());
                 combinedPoints.Add(combinedPoint);
             }

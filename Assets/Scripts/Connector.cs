@@ -83,6 +83,7 @@ public abstract class PhysicsPart
     public Vector3 movement = Vector3.zero;
     public List<PhysicsPart> connected = new List<PhysicsPart>();
     public GameObject gameObject;
+    public Mesh mesh;
     public void ApplyStaticEffectors()
     {
         foreach (Force force in staticForces)
@@ -93,4 +94,19 @@ public abstract class PhysicsPart
     }
     public abstract List<Vector3> Position();
     public abstract void ChangePosition();
+    public virtual bool CheckIfPointColidesWithAnyTriangle(Vector3 point)
+    {
+        for (int i = 0; i + 3 <= mesh.triangles.Length; i += 3)
+        {
+            if (mesh.vertices[mesh.triangles[i]] == point || mesh.vertices[mesh.triangles[i + 1]] == point || mesh.vertices[mesh.triangles[i + 2]] == point)
+                continue;
+
+            var result = ColisionDetector.CheckIfPointInTriangle(point, mesh.vertices[mesh.triangles[i]],
+                mesh.vertices[mesh.triangles[i + 1]], mesh.vertices[mesh.triangles[i + 2]]);
+            if (result)
+                return true;
+        }
+
+        return false;
+    }
 }
