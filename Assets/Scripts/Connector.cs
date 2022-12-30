@@ -78,12 +78,13 @@ public abstract class PhysicsPart
 {
     public bool debugDisableMovement = false;
     public static float friction = 0.92f;
-    public static float timeScale = 0.3f;
+    public static float timeScale = 3f;
     public List<Force> staticForces = new List<Force>();
     public Vector3 forceDirection;
     public Vector3 movement = Vector3.zero;
     public List<PhysicsPart> connected = new List<PhysicsPart>();
     public GameObject gameObject;
+    public Mesh mesh;
     public void ApplyStaticEffectors()
     {
         foreach (Force force in staticForces)
@@ -94,4 +95,44 @@ public abstract class PhysicsPart
     }
     public abstract List<Vector3> Position();
     public abstract void ChangePosition();
+    public virtual float IntersectRayTriangle(Ray ray, Vector3 v0, Vector3 v1, Vector3 v2)
+    {
+        const float kEpsilon = 0.000001f;
+        // edges from v1 & v2 to v0.     
+        Vector3 e1 = v1 - v0;
+        Vector3 e2 = v2 - v0;
+
+        Vector3 h = Vector3.Cross(ray.direction, e2);
+        float a = Vector3.Dot(e1, h);
+        if ((a > -kEpsilon) && (a < kEpsilon))
+        {
+            return float.NaN;
+        }
+
+        float f = 1.0f / a;
+
+        Vector3 s = ray.origin - v0;
+        float u = f * Vector3.Dot(s, h);
+        if ((u < 0.0f) || (u > 1.0f))
+        {
+            return float.NaN;
+        }
+
+        Vector3 q = Vector3.Cross(s, e1);
+        float v = f * Vector3.Dot(ray.direction, q);
+        if ((v < 0.0f) || (u + v > 1.0f))
+        {
+            return float.NaN;
+        }
+
+        float t = f * Vector3.Dot(e2, q);
+        if (t > kEpsilon)
+        {
+            return t;
+        }
+        else
+        {
+            return float.NaN;
+        }
+    }
 }

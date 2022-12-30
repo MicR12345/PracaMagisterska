@@ -20,8 +20,9 @@ public class Point: PhysicsPart
         list.Add(pos);
         return list;
     }
-    public Point(Vector3 pos,GameObject gameObject)
+    public Point(Vector3 pos,GameObject gameObject, ref Mesh mesh)
     {
+        this.mesh = mesh;
         this.gameObject = gameObject;
         this.pos = pos;
     }
@@ -30,7 +31,35 @@ public class Point: PhysicsPart
         if(!debugDisableMovement)
             if (Mathf.Abs(movement.x + movement.y + movement.z) > PhysicsManager.movementToleranceDampening)
             {
-                pos = pos + movement * Time.deltaTime * PhysicsPart.timeScale;
+                Ray ray = new Ray(pos, movement);
+                float distance = float.NaN;
+                for (int i = 0; i < mesh.triangles.Length; i = i + 3)
+                {
+                    if (movement.y>=0)
+                    {
+                        if (mesh.vertices[mesh.triangles[i]].y>=pos.y || mesh.vertices[mesh.triangles[i+1]].y >= pos.y || mesh.vertices[mesh.triangles[i+2]].y >= pos.y)
+                        {
+                            float maxdist = IntersectRayTriangle(ray, mesh.vertices[mesh.triangles[i]], mesh.vertices[mesh.triangles[i + 1]], mesh.vertices[mesh.triangles[i + 2]]);
+                        }
+                    }
+                    else
+                    {
+                        if (mesh.vertices[mesh.triangles[i]].y <= pos.y || mesh.vertices[mesh.triangles[i + 1]].y <= pos.y || mesh.vertices[mesh.triangles[i + 2]].y <= pos.y)
+                        {
+                            float maxdist = IntersectRayTriangle(ray, mesh.vertices[mesh.triangles[i]], mesh.vertices[mesh.triangles[i + 1]], mesh.vertices[mesh.triangles[i + 2]]);
+                        }
+                    }
+
+                }
+                if (distance< movement.magnitude * Mathf.Pow(Time.deltaTime, 2) * PhysicsPart.timeScale)
+                {
+                    pos = pos + movement.normalized * distance;
+                }
+                else
+                {
+                    pos = pos + movement * Mathf.Pow(Time.deltaTime, 2) * PhysicsPart.timeScale;
+                }
+                
             }
     }
 }
@@ -44,8 +73,9 @@ public class CombinedPoint : PhysicsPart
         list.Add(pos);
         return list;
     }
-    public CombinedPoint(List<Point> pointss)
+    public CombinedPoint(List<Point> pointss,ref Mesh mesh)
     {
+        this.mesh = mesh;
         gameObject = pointss[0].gameObject;
         foreach (Point item in pointss)
         {
@@ -70,7 +100,38 @@ public class CombinedPoint : PhysicsPart
             }
             if (Mathf.Abs(movement.x + movement.y + movement.z) > PhysicsManager.movementToleranceDampening)
             {
-                pos = pos + movement * Time.deltaTime * PhysicsPart.timeScale;
+                if (Mathf.Abs(movement.x + movement.y + movement.z) > PhysicsManager.movementToleranceDampening)
+                {
+                    Ray ray = new Ray(pos, movement);
+                    float distance = float.NaN;
+                    for (int i = 0; i < mesh.triangles.Length; i = i + 3)
+                    {
+                        if (movement.y >= 0)
+                        {
+                            if (mesh.vertices[mesh.triangles[i]].y >= pos.y || mesh.vertices[mesh.triangles[i + 1]].y >= pos.y || mesh.vertices[mesh.triangles[i + 2]].y >= pos.y)
+                            {
+                                float maxdist = IntersectRayTriangle(ray, mesh.vertices[mesh.triangles[i]], mesh.vertices[mesh.triangles[i + 1]], mesh.vertices[mesh.triangles[i + 2]]);
+                            }
+                        }
+                        else
+                        {
+                            if (mesh.vertices[mesh.triangles[i]].y <= pos.y || mesh.vertices[mesh.triangles[i + 1]].y <= pos.y || mesh.vertices[mesh.triangles[i + 2]].y <= pos.y)
+                            {
+                                float maxdist = IntersectRayTriangle(ray, mesh.vertices[mesh.triangles[i]], mesh.vertices[mesh.triangles[i + 1]], mesh.vertices[mesh.triangles[i + 2]]);
+                            }
+                        }
+
+                    }
+                    //if (distance < movement.magnitude * Mathf.Pow(Time.deltaTime, 2) * PhysicsPart.timeScale)
+                    //{
+                        //pos = pos + movement.normalized * distance;
+                    //}
+                    //else
+                    //{
+                        pos = pos + movement * Mathf.Pow(Time.deltaTime, 2) * PhysicsPart.timeScale;
+                    //}
+
+                }
             }
             foreach (Point item in points)
             {

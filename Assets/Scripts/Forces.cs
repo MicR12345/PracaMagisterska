@@ -6,7 +6,7 @@ public class Gravity: Force
 {
     public Effector generateEffector()
     {
-        return new Effector(Vector3.down, 0.1f);
+        return new Effector(Vector3.down, 1f);
     }
     public override (Effector, Effector) GenerateEffectors()
     {
