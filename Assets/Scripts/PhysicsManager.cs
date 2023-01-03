@@ -55,13 +55,21 @@ public class PhysicsManager : MonoBehaviour
         }
     }
     */
+    public static float WaitTime = 0.1f;
+    public float TotalTime = WaitTime;
     private void FixedUpdate()
     {
-        foreach (PhysicsPart part in activePhysicsParts)
+        float time = Time.deltaTime;
+        TotalTime = TotalTime - time;
+        if (TotalTime<=0)
         {
-            part.ApplyStaticEffectors();
-            //part.CalculatePhysics();
-            part.ChangePosition();
+            TotalTime = WaitTime;
+            foreach (PhysicsPart part in activePhysicsParts)
+            {
+                part.ApplyStaticEffectors();
+                //part.CalculatePhysics();
+                part.ChangePosition();
+            }
         }
     }
     private void OnDrawGizmos()

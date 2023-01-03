@@ -90,7 +90,7 @@ public abstract class PhysicsPart
         foreach (Force force in staticForces)
         {
             Effector e = force.GenerateEffectors().Item1;
-            movement = movement * PhysicsPart.friction + e.direction.normalized * e.strenght;
+            movement = movement * PhysicsPart.friction + e.direction.normalized * e.strenght * PhysicsManager.WaitTime;
         }
     }
     public abstract List<Vector3> Position();
@@ -134,5 +134,29 @@ public abstract class PhysicsPart
         {
             return float.NaN;
         }
+    }
+    public static bool TriangleGreaterZThanPoint(Vector3 pos, int triangleIdx, Mesh mesh)
+    {
+        if (mesh.vertices[mesh.triangles[triangleIdx]].z >= pos.z || mesh.vertices[mesh.triangles[triangleIdx + 1]].z >= pos.z || mesh.vertices[mesh.triangles[triangleIdx + 2]].z >= pos.z)
+        {
+            return true;
+        }
+        return false;
+    }
+    public static bool TriangleGreaterXThanPoint(Vector3 pos, int triangleIdx, Mesh mesh)
+    {
+        if (mesh.vertices[mesh.triangles[triangleIdx]].x >= pos.y || mesh.vertices[mesh.triangles[triangleIdx + 1]].x >= pos.y || mesh.vertices[mesh.triangles[triangleIdx + 2]].x >= pos.y)
+        {
+            return true;
+        }
+        return false;
+    }
+    public static bool TriangleGreaterYThanPoint(Vector3 pos, int triangleIdx, Mesh mesh)
+    {
+        if (mesh.vertices[mesh.triangles[triangleIdx]].y >= pos.y || mesh.vertices[mesh.triangles[triangleIdx + 1]].y >= pos.y || mesh.vertices[mesh.triangles[triangleIdx + 2]].y >= pos.y)
+        {
+            return true;
+        }
+        return false;
     }
 }

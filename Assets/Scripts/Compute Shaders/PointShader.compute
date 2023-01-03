@@ -1,0 +1,45 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel PointKernel32
+struct Connectors
+{
+    float connectionL[12];
+    int number[12];
+};
+struct SimplePointStr
+{
+    float3 position;
+    float mass;
+    int connectorCount;
+    int ignorePhysics;
+    float3 movePosition;
+    float3 velocity;
+    Connectors connectorPositions;
+};
+float Time;
+float k;
+float friction;
+RWStructuredBuffer<SimplePointStr> SimplePoints;
+RWStructuredBuffer<SimplePointStr> SimplePointsOut;
+[numthreads(32,1,1)]
+void PointKernel32 (uint3 id : SV_DispatchThreadID)
+{
+    SimplePointStr sp = SimplePoints[id.x];
+    if (sp.ignorePhysics ==1) {
+        sp.position = sp.movePosition;
+        SimplePointsOut[id.x] = sp;
+    }
+    else {
+        float g = sp.mass * 9.81 * Time;
+        sp.velocity = sp.velocity + float3(0, - g, 0);
+        for (int i = 0; i < sp.connectorCount; i++) {
+            float3 pp = SimplePoints[sp.connectorPositions.number[i]].position;
+            float dist = distance(sp.position, pp);
+            float3 direction = sp.position - pp;
+            sp.velocity = sp.velocity + (normalize(direction) * k * (sp.connectorPositions.connectionL[i] - dist) * Time);
+        }
+        sp.velocity = sp.velocity * (1 - friction);
+        sp.position = float3(sp.position.x + sp.velocity.x, sp.position.y + sp.velocity.y, sp.position.z + sp.velocity.z);
+
+        SimplePointsOut[id.x] = sp;
+    }
+}

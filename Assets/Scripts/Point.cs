@@ -31,35 +31,53 @@ public class Point: PhysicsPart
         if(!debugDisableMovement)
             if (Mathf.Abs(movement.x + movement.y + movement.z) > PhysicsManager.movementToleranceDampening)
             {
-                Ray ray = new Ray(pos, movement);
-                float distance = float.NaN;
-                for (int i = 0; i < mesh.triangles.Length; i = i + 3)
+                if (Mathf.Abs(movement.x + movement.y + movement.z) > PhysicsManager.movementToleranceDampening)
                 {
-                    if (movement.y>=0)
+                    Ray ray = new Ray(pos, movement);
+                    float distance = float.NaN;
+                    for (int i = 0; i < mesh.triangles.Length; i = i + 3)
                     {
-                        if (mesh.vertices[mesh.triangles[i]].y>=pos.y || mesh.vertices[mesh.triangles[i+1]].y >= pos.y || mesh.vertices[mesh.triangles[i+2]].y >= pos.y)
+                        bool GX = TriangleGreaterXThanPoint(ray.origin, i, mesh);
+                        bool GY = TriangleGreaterYThanPoint(ray.origin, i, mesh);
+                        bool GZ = TriangleGreaterZThanPoint(ray.origin, i, mesh);
+                        if (movement.x >= 0 && GX)
                         {
-                            float maxdist = IntersectRayTriangle(ray, mesh.vertices[mesh.triangles[i]], mesh.vertices[mesh.triangles[i + 1]], mesh.vertices[mesh.triangles[i + 2]]);
+                            if (movement.y >= 0 && GY)
+                            {
+                                if (movement.z >= 0 && GZ)
+                                {
+                                    float maxdist = IntersectRayTriangle(ray, mesh.vertices[mesh.triangles[i]], mesh.vertices[mesh.triangles[i + 1]], mesh.vertices[mesh.triangles[i + 2]]);
+                                }
+                            }
+                            else
+                            {
+
+                            }
                         }
+                        else
+                        {
+                            if (movement.x < 0 && !GX)
+                            {
+                                if (movement.y < 0 && !GY)
+                                {
+                                    if (movement.z < 0 && !GZ)
+                                    {
+                                        float maxdist = IntersectRayTriangle(ray, mesh.vertices[mesh.triangles[i]], mesh.vertices[mesh.triangles[i + 1]], mesh.vertices[mesh.triangles[i + 2]]);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (distance < movement.magnitude * Mathf.Pow(Time.deltaTime, 2) * PhysicsPart.timeScale)
+                    {
+                        pos = pos + movement.normalized * distance;
                     }
                     else
                     {
-                        if (mesh.vertices[mesh.triangles[i]].y <= pos.y || mesh.vertices[mesh.triangles[i + 1]].y <= pos.y || mesh.vertices[mesh.triangles[i + 2]].y <= pos.y)
-                        {
-                            float maxdist = IntersectRayTriangle(ray, mesh.vertices[mesh.triangles[i]], mesh.vertices[mesh.triangles[i + 1]], mesh.vertices[mesh.triangles[i + 2]]);
-                        }
+                        pos = pos + movement * Mathf.Pow(Time.deltaTime, 2) * PhysicsPart.timeScale;
                     }
 
                 }
-                if (distance< movement.magnitude * Mathf.Pow(Time.deltaTime, 2) * PhysicsPart.timeScale)
-                {
-                    pos = pos + movement.normalized * distance;
-                }
-                else
-                {
-                    pos = pos + movement * Mathf.Pow(Time.deltaTime, 2) * PhysicsPart.timeScale;
-                }
-                
             }
     }
 }
@@ -106,30 +124,45 @@ public class CombinedPoint : PhysicsPart
                     float distance = float.NaN;
                     for (int i = 0; i < mesh.triangles.Length; i = i + 3)
                     {
-                        if (movement.y >= 0)
+                        bool GX = TriangleGreaterXThanPoint(ray.origin, i, mesh);
+                        bool GY = TriangleGreaterYThanPoint(ray.origin, i, mesh);
+                        bool GZ = TriangleGreaterZThanPoint(ray.origin, i, mesh);
+                        if (movement.x >= 0 && GX)
                         {
-                            if (mesh.vertices[mesh.triangles[i]].y >= pos.y || mesh.vertices[mesh.triangles[i + 1]].y >= pos.y || mesh.vertices[mesh.triangles[i + 2]].y >= pos.y)
+                            if (movement.y >= 0 && GY)
                             {
-                                float maxdist = IntersectRayTriangle(ray, mesh.vertices[mesh.triangles[i]], mesh.vertices[mesh.triangles[i + 1]], mesh.vertices[mesh.triangles[i + 2]]);
+                                if (movement.z >= 0 && GZ)
+                                {
+                                    float maxdist = IntersectRayTriangle(ray, mesh.vertices[mesh.triangles[i]], mesh.vertices[mesh.triangles[i + 1]], mesh.vertices[mesh.triangles[i + 2]]);
+                                }
+                            }
+                            else
+                            {
+
                             }
                         }
                         else
                         {
-                            if (mesh.vertices[mesh.triangles[i]].y <= pos.y || mesh.vertices[mesh.triangles[i + 1]].y <= pos.y || mesh.vertices[mesh.triangles[i + 2]].y <= pos.y)
+                            if (movement.x < 0 && !GX)
                             {
-                                float maxdist = IntersectRayTriangle(ray, mesh.vertices[mesh.triangles[i]], mesh.vertices[mesh.triangles[i + 1]], mesh.vertices[mesh.triangles[i + 2]]);
+                                if (movement.y < 0 && !GY)
+                                {
+                                    if (movement.z < 0 && !GZ)
+                                    {
+                                        float maxdist = IntersectRayTriangle(ray, mesh.vertices[mesh.triangles[i]], mesh.vertices[mesh.triangles[i + 1]], mesh.vertices[mesh.triangles[i + 2]]);
+                                    }
+                                }
                             }
                         }
-
                     }
-                    //if (distance < movement.magnitude * Mathf.Pow(Time.deltaTime, 2) * PhysicsPart.timeScale)
-                    //{
-                        //pos = pos + movement.normalized * distance;
-                    //}
-                    //else
-                    //{
+                    if (distance < movement.magnitude * Mathf.Pow(Time.deltaTime, 2) * PhysicsPart.timeScale)
+                    {
+                        pos = pos + movement.normalized * distance;
+                    }
+                    else
+                    {
                         pos = pos + movement * Mathf.Pow(Time.deltaTime, 2) * PhysicsPart.timeScale;
-                    //}
+                    }
 
                 }
             }
