@@ -13,19 +13,25 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     Vector3[] vertices;
     int[] triangles;
     int pointCount;
+    public int batycentricPointsIdx;
     ComputeBuffer pointBuffer;
     ComputeBuffer pointBufferOut;
+    ComputeBuffer triangleBuffer;
+    ComputeBuffer debugBuffer;
+    Vector3[] debugCollisionPoints;
     MeshFilter meshFilter;
     SkinnedMeshRenderer skinnedMeshRenderer;
     bool meshFilterFlag;
     public SimplePointStr[] pointData;
+    public SimpleTriangle[] triangleData;
     bool FinishedInitializing = false;
     List<int> anchoredPoints = new List<int>();
     [SerializeField]
     public float ro = 1;
     public float k = 1;
     public float friction = 0.1f;
-    public ComputeShader computeShader;
+    public ComputeShader forceComputeShader;
+    public ComputeShader collisionComputeShader;
     public List<Anchor> anchors = new List<Anchor>();
     private void OnEnable()
     {
@@ -54,13 +60,31 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         triangles = mesh.triangles;
         CalculatePoints();
         pointCount = points.Count;
-
+        GenerateTriangleData();
         pointData = PrepareData().ToArray();
+        /*int[] tri2 = new int[triangles.Length * 2];
+        for (int i = 0; i < tri2.Length; i += 3)
+        {
+            if (i< triangles.Length)
+            {
+                tri2[i] = triangles[i];
+                tri2[i+1] = triangles[i+1];
+                tri2[i+2] = triangles[i+2];
+            }
+            else
+            {
+                int j = i - triangles.Length;
+                tri2[i] = triangles[j + 2];
+                tri2[i+1] = triangles[j+1];
+                tri2[i+2] = triangles[j];
+            }
+        }
+        mesh.triangles = tri2;*/
         foreach (Anchor item in anchors)
         {
             for (int i = 0; i < points.Count; i++)
             {
-                if (Vector3.Distance(pointData[i].position,item.gameObject.transform.position)<= item.range)
+                if (Vector3.Distance(pointData[i].position + transform.position,item.gameObject.transform.position)<= item.range)
                 {
                     Vector3 v = pointData[i].position - item.gameObject.transform.position;
                     pointData[i].ignorePhysics = 1;
@@ -71,42 +95,23 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
             }
         }
         int sizeOfStruct = sizeof(SimplePointStr);
-
-
-        computeShader.SetFloat("k", k);
-        computeShader.SetFloat("friction", friction);
-        if (pointCount > 4096)
-        {
-            pointBuffer = new ComputeBuffer(4096, sizeOfStruct);
-            pointBufferOut = new ComputeBuffer(4096, sizeOfStruct);
-            computeShader.SetBuffer(0, "SimplePoints", pointBuffer);
-            computeShader.SetBuffer(0, "SimplePointsOut", pointBufferOut);
-            for (int i = 0; i < (pointCount/4096) + 1; i++)
-            {
-                int m = Mathf.Min(pointCount - i*4096,4096);
-                SimplePointStr[] pointData2 = new SimplePointStr[4096];
-                for (int j = 0; j < m; j++)
-                {
-                    pointData2[j] = pointData[i + j];
-                }
-                pointBuffer.SetData(pointData2);
-                computeShader.Dispatch(0, (m / 32) + 1, 1, 1);
-                pointBufferOut.GetData(pointData2);
-                for (int j = 0; j < m; j++)
-                {
-                    pointData[i + j] = pointData2[j];
-                }
-            }
-        }
-        else
-        {
-            pointBuffer = new ComputeBuffer(pointCount, sizeOfStruct);
-            pointBufferOut = new ComputeBuffer(pointCount, sizeOfStruct);
-            computeShader.SetBuffer(0, "SimplePoints", pointBuffer);
-            computeShader.SetBuffer(0, "SimplePointsOut", pointBufferOut);
-            pointBuffer.SetData(pointData);
-            computeShader.Dispatch(0, (pointCount / 32) + 1, 1, 1);
-        }
+        forceComputeShader.SetFloat("k", k);
+        forceComputeShader.SetFloat("friction", friction);
+        pointBuffer = new ComputeBuffer(pointCount, sizeOfStruct,ComputeBufferType.Structured);
+        pointBufferOut = new ComputeBuffer(pointCount, sizeOfStruct, ComputeBufferType.Structured);
+        triangleBuffer = new ComputeBuffer(triangleData.Length,sizeof(SimpleTriangle),ComputeBufferType.Structured);
+        debugBuffer = new ComputeBuffer(pointCount, sizeof(Vector3), ComputeBufferType.Structured);
+        forceComputeShader.SetBuffer(0, "SimplePoints", pointBuffer);
+        forceComputeShader.SetBuffer(0, "SimplePointsOut", pointBufferOut);
+        forceComputeShader.SetBuffer(0, "SimplePoints", pointBuffer);
+        collisionComputeShader.SetBuffer(0, "SimplePoints", pointBufferOut);
+        collisionComputeShader.SetBuffer(0, "SimplePointsOut", pointBuffer);
+        collisionComputeShader.SetBuffer(0, "Triangles", triangleBuffer);
+        debugCollisionPoints = new Vector3[pointCount];
+        collisionComputeShader.SetBuffer(0, "Debug", debugBuffer);
+        collisionComputeShader.SetInt("TriangleCount", triangles.Length);
+        triangleBuffer.SetData(triangleData);
+        pointBuffer.SetData(pointData);
         
         
         FinishedInitializing = true;
@@ -117,37 +122,25 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         pointBuffer = null;
         pointBufferOut.Release();
         pointBufferOut=null;
+        triangleBuffer.Release();
+        triangleBuffer = null;
+        debugBuffer.Release();
+        debugBuffer = null;
     }
     private void FixedUpdate()
     {
         if (FinishedInitializing)
         {
-            computeShader.SetFloat("Time", Time.deltaTime);
-            if (pointCount > 4096)
-            {
-                for (int i = 0; i < (pointCount / 4096) + 1; i++)
-                {
-                    int m = Mathf.Min(pointCount - i * 4096, 4096);
-                    SimplePointStr[] pointData2 = new SimplePointStr[4096];
-                    for (int j = 0; j < m; j++)
-                    {
-                        pointData2[j] = pointData[i + j];
-                    }
-                    pointBuffer.SetData(pointData2);
-                    computeShader.Dispatch(0, (m / 32) + 1, 1, 1);
-                    pointBufferOut.GetData(pointData2);
-                    for (int j = 0; j < m; j++)
-                    {
-                        pointData[i + j] = pointData2[j];
-                    }
-                }
-            }
-            else
-            {
-                pointBuffer.SetData(pointData);
-                computeShader.Dispatch(0, (pointCount / 32) + 1, 1, 1);
-                pointBufferOut.GetData(pointData);
-            }
+            float t = Time.deltaTime;
+            collisionComputeShader.SetFloat("Time", t);
+            forceComputeShader.SetFloat("Time", t);
+            pointBuffer.SetData(pointData);
+            forceComputeShader.Dispatch(0, (pointCount / 128) + 1, 1, 1);
+            pointBufferOut.GetData(pointData);
+            pointBufferOut.SetData(pointData);
+            collisionComputeShader.Dispatch(0, (pointCount / 128) + 1, 1, 1);
+            pointBuffer.GetData(pointData);
+            debugBuffer.GetData(debugCollisionPoints);
             foreach (Anchor item in anchors)
             {
                 for (int i = 0; i < item.managedPoints.Count; i++)
@@ -158,6 +151,18 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
             CreateNewMesh();
         }
     }
+    private void OnDrawGizmos()
+    {
+        if (debugCollisionPoints != null)
+        {
+            for (int i = 0; i < debugCollisionPoints.Length; i++)
+            {
+                Gizmos.DrawCube(debugCollisionPoints[i], Vector3.one * 0.01f);
+            }
+            debugCollisionPoints = new Vector3[debugCollisionPoints.Length];
+            debugBuffer.SetData(debugCollisionPoints);
+        }
+    }
     public void CreateNewMesh()
     {
         Mesh meshNew = new Mesh();
@@ -165,12 +170,13 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         Vector3[] newPoints = new Vector3[l];
         for (int i = 0; i < l; i++)
         {
-            newPoints[i] = pointData[i].position;
+            newPoints[i] = pointData[pointMap[i]].position;
         }
         meshNew.vertices = newPoints;
         vertices = newPoints;
         meshNew.triangles = mesh.triangles;
         meshNew.uv = mesh.uv;
+        meshNew.normals = mesh.normals;
         if (meshFilterFlag)
         {
             meshFilter.sharedMesh = meshNew;
@@ -215,7 +221,11 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
             if (vertMap[i] == i)
             {
                 pointMap[i] = points.Count;
-                points.Add(new SimplePoint(vertMap[i], vertices[vertMap[i]],0));
+                points.Add(new SimplePoint(this.gameObject, pointMap[vertMap[i]], vertices[vertMap[i]],0));
+            }
+            else
+            {
+                pointMap[i] = pointMap[vertMap[i]];
             }
         }
         //Connect points within triangles
@@ -240,19 +250,20 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         int pointCount = points.Count;
         for (int i = 0; i < mesh.triangles.Length; i += 3)
         {
-
             SimplePoint p = new SimplePoint(
+                this.gameObject,
                 pointCount + i / 3,
                 GetBarycentricPoint(vertices[triangleMap[i]], vertices[triangleMap[i + 1]], vertices[triangleMap[i + 2]]),
-                GetTriangleSurfaceArea(vertices[triangleMap[i]], vertices[triangleMap[i + 1]], vertices[triangleMap[i + 2]]),
+                GetTriangleSurfaceArea(vertices[triangleMap[i]], vertices[triangleMap[i + 1]], vertices[triangleMap[i + 2]]) * ro,
                 i/3);
+            points[pointMap[triangleMap[i]]].connections.Add(p);
+            p.connections.Add(points[pointMap[triangleMap[i]]]);
+            points[pointMap[triangleMap[i + 1]]].connections.Add(p);
+            p.connections.Add(points[pointMap[triangleMap[i + 1]]]);
+            points[pointMap[triangleMap[i + 2]]].connections.Add(p);
+            p.connections.Add(points[pointMap[triangleMap[i + 2]]]);
             points.Add(p);
-            points[triangleMap[i]].connections.Add(p);
-            points[p.id].connections.Add(points[triangleMap[i]]);
-            points[triangleMap[i + 1]].connections.Add(p);
-            points[p.id].connections.Add(points[triangleMap[i+1]]);
-            points[triangleMap[i + 2]].connections.Add(p);
-            points[p.id].connections.Add(points[triangleMap[i+2]]);
+
         }
         for (int i = pointCount; i < points.Count; i++)
         {
@@ -268,13 +279,34 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         }
         for (int i = 0; i < mesh.triangles.Length; i += 3)
         {
-            points[triangleMap[i]].mass = points[triangleMap[i]].mass + (points[pointCount + i / 3].mass * 2f) / 9f;
-            points[triangleMap[i + 1]].mass = points[triangleMap[i + 1]].mass + (points[pointCount + i / 3].mass * 2f) / 9f;
-            points[triangleMap[i + 2]].mass = points[triangleMap[i + 2]].mass + (points[pointCount + i / 3].mass * 2f) / 9f;
+            points[pointMap[triangleMap[i]]].mass = points[pointMap[triangleMap[i]]].mass + (points[pointCount + i / 3].mass * 2f) / 9f;
+            points[pointMap[triangleMap[i + 1]]].mass = points[pointMap[triangleMap[i + 1]]].mass + (points[pointCount + i / 3].mass * 2f) / 9f;
+            points[pointMap[triangleMap[i + 2]]].mass = points[pointMap[triangleMap[i + 2]]].mass + (points[pointCount + i / 3].mass * 2f) / 9f;
             points[pointCount + i / 3].mass = points[pointCount + i / 3].mass / 3f;
         }
+        batycentricPointsIdx = pointCount;
     }
-    public bool IsSamePoint(Vector3 a,Vector3 b, float tolerance = 0.00001f)
+    public void GenerateTriangleData()
+    {
+        triangleData = new SimpleTriangle[(pointCount- batycentricPointsIdx) * 3];
+        for (int i = batycentricPointsIdx; i < pointCount; i ++)
+        {
+            int j = i - batycentricPointsIdx;
+            triangleData[j*3] = new SimpleTriangle();
+            triangleData[j * 3 + 1] = new SimpleTriangle();
+            triangleData[j * 3 + 2] = new SimpleTriangle();
+            triangleData[j * 3].t1 = points[i].connections[0].id;
+            triangleData[j * 3].t2 = points[i].connections[1].id;
+            triangleData[j * 3].t3 = i;
+            triangleData[j * 3 + 1].t1 = points[i].connections[1].id;
+            triangleData[j * 3 + 1].t2 = points[i].connections[2].id;
+            triangleData[j * 3 + 1].t3 = i;
+            triangleData[j * 3 + 2].t1 = points[i].connections[2].id;
+            triangleData[j * 3 + 2].t2 = points[i].connections[0].id;
+            triangleData[j * 3 + 2].t3 = i;
+        }
+    }
+    public bool IsSamePoint(Vector3 a,Vector3 b, float tolerance = 0f)
     {
         if (a.x + tolerance>= b.x && a.x - tolerance <= b.x 
             && a.y + tolerance >= b.y && a.y - tolerance <= b.y 
@@ -309,7 +341,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
             p.ignorePhysics = 0;
             p.movePosition = Vector3.zero;
             Connectors c = new Connectors();
-            for (int j = 0; j < 12; j++)
+            for (int j = 0; j < 24; j++)
             {
                 if (j<points[i].connections.Count)
                 {
@@ -332,8 +364,10 @@ public class SimplePoint
     public List<SimplePoint> connections = new List<SimplePoint>();
     public int isBarycentric;
     public float mass = 0;
-    public SimplePoint(int id,Vector3 position,float mass, int isBarycentric = -1)
+    public GameObject gameObject;
+    public SimplePoint(GameObject gameObject,int id,Vector3 position,float mass, int isBarycentric = -1)
     {
+        this.gameObject = gameObject;
         this.id = id;
         this.position = position;
         this.isBarycentric= isBarycentric;
@@ -366,10 +400,14 @@ public struct SimplePointStr
     public Vector3 velocity;
     public Connectors connectorPositions;
 }
-//Size of buffer has to be constant
-//Only broken mesh can have more than 12 connections
 public unsafe struct Connectors
 {
-    public fixed float connectionL[12];
-    public fixed int number[12];
+    public fixed float connectionL[24];
+    public fixed int number[24];
+}
+public struct SimpleTriangle
+{
+    public int t1;
+    public int t2;
+    public int t3;
 }

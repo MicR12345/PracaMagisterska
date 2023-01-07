@@ -2094,6 +2094,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1694388105159416148}
   - component: {fileID: 1694388105159416151}
+  - component: {fileID: 6016575543348871995}
   m_Layer: 0
   m_Name: Hair
   m_TagString: Untagged
@@ -2109,7 +2110,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1694388105159416149}
   m_LocalRotation: {x: -0.7071068, y: 0, z: -0, w: 0.7071067}
-  m_LocalPosition: {x: -0, y: 0, z: 0}
+  m_LocalPosition: {x: -0, y: -0.004, z: 0}
   m_LocalScale: {x: 100, y: 100, z: 100}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2207,3 +2208,20 @@ SkinnedMeshRenderer:
     m_Center: {x: 0.0000075949356, y: -0.003686042, z: -0.00033158134}
     m_Extent: {x: 0.0054057, y: 0.0071506803, z: 0.001985626}
   m_DirtyAABB: 0
+--- !u!114 &6016575543348871995
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1694388105159416149}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 42e8f3261851d6c44ac60f0ffbd45d84, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ro: 1
+  k: 1
+  friction: 0.1
+  computeShader: {fileID: 7200000, guid: 2d301b6c2c9a2944f81f94ece1ca7884, type: 3}
+  anchors: []
