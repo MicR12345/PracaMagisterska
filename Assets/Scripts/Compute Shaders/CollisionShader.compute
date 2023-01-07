@@ -103,7 +103,6 @@ int TriangleCount;
 float Time;
 RWStructuredBuffer<SimplePointStr> SimplePoints;
 RWStructuredBuffer<SimplePointStr> SimplePointsOut;
-RWStructuredBuffer<float3> Debug;
 StructuredBuffer<SimpleTriangle> Triangles;
 [numthreads(128,1,1)]
 void CollisionKernel(uint3 id : SV_DispatchThreadID)
@@ -145,7 +144,6 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                         float t = RayTriangleDistance(origin,sp.velocity, t0, t1, t2);
                         if (t >= 0 && length(sp.velocity) >= t)
                             sp.velocity = sp.velocity - normalize(sp.velocity) * t;
-                        Debug[id.x] = sp.position + normalize(sp.velocity) * t;
 
                     }
                 }

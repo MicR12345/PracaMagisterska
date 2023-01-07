@@ -17,8 +17,6 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     ComputeBuffer pointBuffer;
     ComputeBuffer pointBufferOut;
     ComputeBuffer triangleBuffer;
-    ComputeBuffer debugBuffer;
-    Vector3[] debugCollisionPoints;
     MeshFilter meshFilter;
     SkinnedMeshRenderer skinnedMeshRenderer;
     bool meshFilterFlag;
@@ -100,15 +98,12 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         pointBuffer = new ComputeBuffer(pointCount, sizeOfStruct,ComputeBufferType.Structured);
         pointBufferOut = new ComputeBuffer(pointCount, sizeOfStruct, ComputeBufferType.Structured);
         triangleBuffer = new ComputeBuffer(triangleData.Length,sizeof(SimpleTriangle),ComputeBufferType.Structured);
-        debugBuffer = new ComputeBuffer(pointCount, sizeof(Vector3), ComputeBufferType.Structured);
         forceComputeShader.SetBuffer(0, "SimplePoints", pointBuffer);
         forceComputeShader.SetBuffer(0, "SimplePointsOut", pointBufferOut);
         forceComputeShader.SetBuffer(0, "SimplePoints", pointBuffer);
         collisionComputeShader.SetBuffer(0, "SimplePoints", pointBufferOut);
         collisionComputeShader.SetBuffer(0, "SimplePointsOut", pointBuffer);
         collisionComputeShader.SetBuffer(0, "Triangles", triangleBuffer);
-        debugCollisionPoints = new Vector3[pointCount];
-        collisionComputeShader.SetBuffer(0, "Debug", debugBuffer);
         collisionComputeShader.SetInt("TriangleCount", triangles.Length);
         triangleBuffer.SetData(triangleData);
         pointBuffer.SetData(pointData);
@@ -124,8 +119,6 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         pointBufferOut=null;
         triangleBuffer.Release();
         triangleBuffer = null;
-        debugBuffer.Release();
-        debugBuffer = null;
     }
     private void FixedUpdate()
     {
@@ -140,7 +133,6 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
             pointBufferOut.SetData(pointData);
             collisionComputeShader.Dispatch(0, (pointCount / 128) + 1, 1, 1);
             pointBuffer.GetData(pointData);
-            debugBuffer.GetData(debugCollisionPoints);
             foreach (Anchor item in anchors)
             {
                 for (int i = 0; i < item.managedPoints.Count; i++)
@@ -149,18 +141,6 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
                 }
             }
             CreateNewMesh();
-        }
-    }
-    private void OnDrawGizmos()
-    {
-        if (debugCollisionPoints != null)
-        {
-            for (int i = 0; i < debugCollisionPoints.Length; i++)
-            {
-                Gizmos.DrawCube(debugCollisionPoints[i], Vector3.one * 0.01f);
-            }
-            debugCollisionPoints = new Vector3[debugCollisionPoints.Length];
-            debugBuffer.SetData(debugCollisionPoints);
         }
     }
     public void CreateNewMesh()
