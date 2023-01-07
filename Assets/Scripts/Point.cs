@@ -103,7 +103,6 @@ public class CombinedPoint : PhysicsPart
                 if (Mathf.Abs(movement.x + movement.y + movement.z) > PhysicsManager.movementToleranceDampening)
                 {
                     Ray ray = new Ray(pos, movement);
-                    float distance = float.NaN;
                     for (int i = 0; i < mesh.triangles.Length; i = i + 3)
                     {
                         if (movement.y >= 0)
