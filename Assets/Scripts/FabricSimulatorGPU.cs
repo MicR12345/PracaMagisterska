@@ -17,6 +17,11 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     ComputeBuffer pointBuffer;
     ComputeBuffer pointBufferOut;
     ComputeBuffer triangleBuffer;
+    ComputeBuffer velocityBuffer;
+    ComputeBuffer debugBuffer;
+    ComputeBuffer debugBuffer2;
+    Vector3[] debug;
+    Vector3[] debug2;
     MeshFilter meshFilter;
     SkinnedMeshRenderer skinnedMeshRenderer;
     bool meshFilterFlag;
@@ -28,6 +33,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     public float ro = 1;
     public float k = 1;
     public float friction = 0.1f;
+    public float timeScale = 1f;
     public ComputeShader forceComputeShader;
     public ComputeShader collisionComputeShader;
     public List<Anchor> anchors = new List<Anchor>();
@@ -60,7 +66,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         pointCount = points.Count;
         GenerateTriangleData();
         pointData = PrepareData().ToArray();
-        /*int[] tri2 = new int[triangles.Length * 2];
+        int[] tri2 = new int[triangles.Length * 2];
         for (int i = 0; i < tri2.Length; i += 3)
         {
             if (i< triangles.Length)
@@ -77,7 +83,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
                 tri2[i+2] = triangles[j];
             }
         }
-        mesh.triangles = tri2;*/
+        mesh.triangles = tri2;
         foreach (Anchor item in anchors)
         {
             for (int i = 0; i < points.Count; i++)
@@ -98,16 +104,25 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         pointBuffer = new ComputeBuffer(pointCount, sizeOfStruct,ComputeBufferType.Structured);
         pointBufferOut = new ComputeBuffer(pointCount, sizeOfStruct, ComputeBufferType.Structured);
         triangleBuffer = new ComputeBuffer(triangleData.Length,sizeof(SimpleTriangle),ComputeBufferType.Structured);
+        velocityBuffer = new ComputeBuffer(pointCount, sizeof(Vector3), ComputeBufferType.Structured);
+        debugBuffer = new ComputeBuffer(pointCount,sizeof(Vector3), ComputeBufferType.Structured);
+        debugBuffer2 = new ComputeBuffer(pointCount, sizeof(Vector3), ComputeBufferType.Structured);
         forceComputeShader.SetBuffer(0, "SimplePoints", pointBuffer);
         forceComputeShader.SetBuffer(0, "SimplePointsOut", pointBufferOut);
         forceComputeShader.SetBuffer(0, "SimplePoints", pointBuffer);
         collisionComputeShader.SetBuffer(0, "SimplePoints", pointBufferOut);
         collisionComputeShader.SetBuffer(0, "SimplePointsOut", pointBuffer);
         collisionComputeShader.SetBuffer(0, "Triangles", triangleBuffer);
+        collisionComputeShader.SetBuffer(0, "Velocity", velocityBuffer);
         collisionComputeShader.SetInt("TriangleCount", triangles.Length);
+        collisionComputeShader.SetBuffer(0, "Debug", debugBuffer);
+        collisionComputeShader.SetBuffer(0, "Debug2", debugBuffer2);
         triangleBuffer.SetData(triangleData);
         pointBuffer.SetData(pointData);
-        
+        Vector3[] velocities = new Vector3[pointCount];
+        debug = new Vector3[pointCount];
+        debug2 = new Vector3[pointCount];
+        velocityBuffer.SetData(velocities);
         
         FinishedInitializing = true;
     }
@@ -119,28 +134,47 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         pointBufferOut=null;
         triangleBuffer.Release();
         triangleBuffer = null;
+        velocityBuffer.Release();
+        velocityBuffer = null;
+        debugBuffer.Release();
+        debugBuffer = null;
+        debugBuffer2.Release();
+        debugBuffer2 = null;
     }
     private void FixedUpdate()
     {
         if (FinishedInitializing)
         {
-            float t = Time.deltaTime;
+            float t = Time.deltaTime * timeScale;
             collisionComputeShader.SetFloat("Time", t);
             forceComputeShader.SetFloat("Time", t);
-            pointBuffer.SetData(pointData);
-            forceComputeShader.Dispatch(0, (pointCount / 128) + 1, 1, 1);
-            pointBufferOut.GetData(pointData);
-            pointBufferOut.SetData(pointData);
-            collisionComputeShader.Dispatch(0, (pointCount / 128) + 1, 1, 1);
-            pointBuffer.GetData(pointData);
             foreach (Anchor item in anchors)
             {
                 for (int i = 0; i < item.managedPoints.Count; i++)
                 {
-                    pointData[item.managedPoints[i]].movePosition = item.gameObject.transform.position + item.pointVector[i];
+                    pointData[item.managedPoints[i]].velocity = (item.gameObject.transform.position + item.pointVector[i]) - pointData[item.managedPoints[i]].position;
                 }
             }
+            pointBuffer.SetData(pointData);
+            forceComputeShader.Dispatch(0, (pointCount / 128) + 1, 1, 1);
+            collisionComputeShader.Dispatch(0, (pointCount / 128) + 1, 1, 1);
+            pointBuffer.GetData(pointData);
             CreateNewMesh();
+        }
+    }
+    private void OnDrawGizmos()
+    {
+        if (FinishedInitializing)
+        {
+            debugBuffer.GetData(debug);
+            debugBuffer2.GetData(debug2);
+            for (int i = 0; i < debug.Length; i++)
+            {
+                if (debug[i] != null)
+                {
+                    Gizmos.DrawLine(debug[i], debug2[i]);
+                }
+            }
         }
     }
     public void CreateNewMesh()

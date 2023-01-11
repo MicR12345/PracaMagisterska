@@ -26,7 +26,6 @@ void PointKernel32 (uint3 id : SV_DispatchThreadID)
     SimplePointStr sp = SimplePoints[id.x];
     
     if (sp.ignorePhysics ==1) {
-        sp.position = sp.movePosition;
         SimplePointsOut[id.x] = sp;
     }
     else {

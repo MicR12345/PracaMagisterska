@@ -225,7 +225,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &484239497
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -240,8 +240,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   batycentricPointsIdx: 0
   ro: 1
-  k: 10
+  k: 7
   friction: 0.1
+  timeScale: 0.05
   forceComputeShader: {fileID: 7200000, guid: 2d301b6c2c9a2944f81f94ece1ca7884, type: 3}
   collisionComputeShader: {fileID: 7200000, guid: 286b7f620ce73404d9bcfaf45afdec16, type: 3}
   anchors:
@@ -249,7 +250,6 @@ MonoBehaviour:
   - {fileID: 706445574}
   - {fileID: 919000050}
   - {fileID: 1585639092}
-  - {fileID: 1833167588}
   - {fileID: 1954633963}
   - {fileID: 1772831865}
   - {fileID: 493544644}
@@ -335,7 +335,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &493544644
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -387,6 +387,7 @@ MonoBehaviour:
   ro: 1
   k: 5
   friction: 0.8
+  timeScale: 0.5
   forceComputeShader: {fileID: 0}
   collisionComputeShader: {fileID: 0}
   anchors: []
@@ -406,7 +407,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &706445574
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -453,7 +454,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &874458092
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -500,7 +501,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &919000050
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -711,7 +712,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1585639092
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -758,7 +759,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1628155957
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -805,7 +806,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1772831865
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -899,7 +900,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1954633963
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -946,7 +947,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &2066690263
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -993,7 +994,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &2079299148
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1017,7 +1018,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2079299147}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.007, y: 1.236, z: 0}
+  m_LocalPosition: {x: -0.007, y: 1.004, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1042,7 +1043,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &2134973063
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1056,9 +1057,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   batycentricPointsIdx: 0
-  ro: 3
+  ro: 1
   k: 12
   friction: 0.1
+  timeScale: 0.5
   forceComputeShader: {fileID: 7200000, guid: 2d301b6c2c9a2944f81f94ece1ca7884, type: 3}
   collisionComputeShader: {fileID: 7200000, guid: 286b7f620ce73404d9bcfaf45afdec16, type: 3}
   anchors:
@@ -1112,7 +1114,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2134973062}
-  m_Mesh: {fileID: 4300028, guid: 8f0565f23a2b58541a475bd3c1393052, type: 3}
+  m_Mesh: {fileID: 4300032, guid: 8f0565f23a2b58541a475bd3c1393052, type: 3}
 --- !u!4 &2134973066
 Transform:
   m_ObjectHideFlags: 0
