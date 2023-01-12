@@ -242,7 +242,7 @@ MonoBehaviour:
   ro: 1
   k: 7
   friction: 0.1
-  timeScale: 0.5
+  timeScale: 0.7
   forceComputeShader: {fileID: 7200000, guid: 2d301b6c2c9a2944f81f94ece1ca7884, type: 3}
   collisionComputeShader: {fileID: 7200000, guid: 286b7f620ce73404d9bcfaf45afdec16, type: 3}
   externalCollisionShader: {fileID: 7200000, guid: 97d793d953437cd4da6d711cab2611f1, type: 3}

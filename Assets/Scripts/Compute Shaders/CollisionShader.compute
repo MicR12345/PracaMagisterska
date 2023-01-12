@@ -42,7 +42,7 @@ BoundingBox CalculateBoundingBoxTriangle(float3 t1, float3 t2, float3 t3)
     float maxZ = max(t1.z, t2.z);
     maxZ = max(maxZ, t3.z);
     float minX = min(t1.x, t2.x);
-    minX = max(minX, t3.x);
+    minX = min(minX, t3.x);
     float minY = min(t1.y, t2.y);
     minY = min(minY, t3.y);
     float minZ = min(t1.z, t2.z);
