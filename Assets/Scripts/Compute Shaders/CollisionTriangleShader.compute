@@ -40,7 +40,6 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
         sp.velocity = sp.velocity - (normalize(sp.velocity) * (0.01f + length(sp2.position - sp.position)));
 
     }
-    sp.position = sp.position + sp.velocity;
     SimplePointsOut[id.x] = sp;
 
 }
