@@ -135,7 +135,7 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
 {
     SimplePointStr sp = SimplePoints[id.x];
 
-    if (abs(sp.velocity.x) + abs(sp.velocity.y) + abs(sp.velocity.z) > 0.01f)
+    if (abs(sp.velocity.x) + abs(sp.velocity.y) + abs(sp.velocity.z) > 0.01f || true)
     {
         //Debug[id.x] = sp.position;
         //Debug2[id.x] = sp.position + normalize(sp.velocity);
@@ -148,9 +148,9 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
             SimpleTriangle t = Triangles[i];
             if (t.t1 != id.x && t.t2 != id.x && t.t3 != id.x)
             {
-                float3 t0 = SimplePoints[t.t1].position;
-                float3 t1 = SimplePoints[t.t2].position;
-                float3 t2 = SimplePoints[t.t3].position;
+                float3 t0 = SimplePoints[t.t1].position + SimplePoints[t.t1].velocity;
+                float3 t1 = SimplePoints[t.t2].position + SimplePoints[t.t2].velocity;
+                float3 t2 = SimplePoints[t.t3].position + SimplePoints[t.t3].velocity;
                 if (CheckIfInBoundingBox(origin, sp.position + normalize(sp.velocity), t0, t1, t2))
                 {
                     float3 collisionVector;
@@ -159,7 +159,7 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                     {
                         if (dt < 2 * length(sp.velocity))
                         {
-                            sp.velocity = float3(0, 0, 0);
+                            sp.velocity = sp.velocity - normalize(collisionVector) * 1.1f * length(sp.velocity);
                             //sp.velocity = cross(sp.velocity, collisionVector) * length(sp.velocity);
                         }
                     }
@@ -174,10 +174,10 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                         if (CheckIfInBoundingBox(end, connection.position, t0, t1, t2))
                         {
                             float3 collisionVector;
-                            float dt = RayTriangleDistance(end, normalize(connection.position - end), t0, t1, t2,collisionVector);
+                            float dt = RayTriangleDistance(end, normalize((connection.position) + (connection.velocity) - end), t0, t1, t2, collisionVector);
                             if (dt >= 0)
                             {
-                                if (dt <= length(connection.position - end))
+                                if (dt <= length((connection.position) + (connection.velocity) - end))
                                     sp.velocity = float3(0, 0, 0);
                                 //sp.velocity = cross(sp.velocity, collisionVector) * length(sp.velocity);
                             }

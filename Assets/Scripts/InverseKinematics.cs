@@ -35,7 +35,7 @@ public class InverseKinematics : MonoBehaviour
     public bool poleDirection = false;
     public bool poleRotationAxis = false;
 
-    void Awake()
+    void OnEnable()
     {
         int numberOfJoints = transforms.Length + 1;
         jointChainLength = 0;

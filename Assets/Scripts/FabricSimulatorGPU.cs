@@ -71,6 +71,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         pointCount = points.Count;
         GenerateTriangleData();
         pointData = PrepareData().ToArray();
+        
         int[] tri2 = new int[triangles.Length * 2];
         for (int i = 0; i < tri2.Length; i += 3)
         {
@@ -89,6 +90,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
             }
         }
         mesh.triangles = tri2;
+        
         foreach (Anchor item in anchors)
         {
             for (int i = 0; i < points.Count; i++)
@@ -174,8 +176,8 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
             pointBufferOut.GetData(pointData);
             CreateNewMesh();
         }
-    }
-    /*private void OnDrawGizmos()
+    }/*
+    private void OnDrawGizmos()
     {
         if (FinishedInitializing)
         {
