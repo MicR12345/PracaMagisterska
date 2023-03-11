@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Sockets;
 using UnityEditor;
 using UnityEngine;
 
@@ -21,6 +22,12 @@ public class InverseKinematics : MonoBehaviour
     private Vector3[] jointStartDirection;
     private Quaternion ikTargetStartRot;
     private Quaternion lastJointStartRot;
+    public GameObject CubeBorders;
+    public List<float?[,]> MeshVerticesAssignations = new List<float?[,]>();
+    private SkinnedMeshRenderer[] skinnedMeshes;
+    public float fuzziness = (float)0.3;
+    private Vector3[] OriginalPositionsOfJoints;
+    private Quaternion[] OriginalRotationsOfJoints;
 
     [Header("Pole target (3 joint chain)")]
     public Transform poleTarget;
@@ -35,8 +42,34 @@ public class InverseKinematics : MonoBehaviour
     public bool poleDirection = false;
     public bool poleRotationAxis = false;
 
+
     void OnEnable()
     {
+        skinnedMeshes = FindObjectsOfType<SkinnedMeshRenderer>();
+        //MeshFilter[] filteredMeshes = meshFilters.Where(x => !x.name.Contains("IKJoint") && !x.name.Contains("GroupCube")).ToArray();
+
+        MeshRenderer cubeBordersMesh = CubeBorders.GetComponent<MeshRenderer>();
+        Bounds bounds = cubeBordersMesh.bounds;
+        var x = transforms[1].position;
+        var y = transforms[1].rotation;
+        /*
+        foreach(var x in meshFilters)
+        {
+            bool isAnyInisde = false;
+            foreach(var vert in x.sharedMesh.vertices)
+            {
+                if (bounds.Contains(vert))
+                {
+                    isAnyInisde = true;
+                    break;
+                }
+            }
+
+            
+        }*/
+
+        //IK
+
         int numberOfJoints = transforms.Length + 1;
         jointChainLength = 0;
         jointTransforms = new Transform[numberOfJoints];
@@ -47,6 +80,8 @@ public class InverseKinematics : MonoBehaviour
         ikTargetStartRot = ikTarget.rotation;
 
         var current = transform;
+
+        AssignVerticesToCentroids();
 
         // For each bone calculate and store the lenght of the bone
         for (var i = 0; i <= jointTransforms.Length; i += 1)
@@ -70,6 +105,59 @@ public class InverseKinematics : MonoBehaviour
             // Move the iteration to next joint in the chain
             current = transforms[i];
         }
+    }
+
+    public void AssignVerticesToCentroids()
+    {
+        MeshRenderer cubeBordersMesh = CubeBorders.GetComponent<MeshRenderer>();
+        Bounds bounds = cubeBordersMesh.bounds;
+        for(int i=0;i< skinnedMeshes.Length; i++)
+        {
+            var vertices = skinnedMeshes[i].sharedMesh.vertices;
+            float?[,] tableofAssignations = new float?[vertices.Count(), transforms.Count()];
+            for(int j=0; j < vertices.Count(); j++)
+            {
+                if(bounds.Contains(vertices[j]))
+                {
+                    var vertice = vertices[j];
+                    var proportions = CalculateMembership(vertice);
+                    for(int x = 0; x < proportions.Count(); x++)
+                    {
+                        tableofAssignations[j, x] = proportions[x];
+                    }
+
+                }
+                else
+                {
+                    for(int z=0; z < transforms.Count(); z++)
+                    {
+                        tableofAssignations[j, z] = null;
+                    }
+                }
+            }
+            MeshVerticesAssignations.Add(tableofAssignations);
+        }
+    }
+
+    private float[] CalculateMembership(Vector3 vertice)
+    {
+        float[] proportions = new float[transforms.Count()];
+        for (int i=0; i< transforms.Count(); i++)
+        {
+            float distance = Vector3.Distance(vertice, transforms[i].position);
+            float sum = 0f;
+            for(int j=0; j < transforms.Count(); j++)
+            {
+                float zyx = distance / Vector3.Distance(vertice, transforms[j].position);
+                float xyz = 2f / (transforms.Count() - 1);
+                sum += (float)Math.Pow(zyx, xyz);
+            }
+
+            float newMembership = 1f / sum;
+            proportions[i] = newMembership;
+        }
+
+        return proportions;
     }
 
     void PoleConstraint()
@@ -195,12 +283,64 @@ public class InverseKinematics : MonoBehaviour
         // Let's constrain the rotation of the last joint to the IK target and maintain the offset.
         Quaternion offset = lastJointStartRot * Quaternion.Inverse(ikTargetStartRot);
         jointTransforms.Last().rotation = ikTarget.rotation * offset;
+        var x = transforms[1].position;
+        var y = transforms[1].rotation;
     }
 
     void Update()
     {
+        OriginalPositionsOfJoints = transforms.Select(x => x.position).ToArray();
+        OriginalRotationsOfJoints = transforms.Select(x => x.rotation).ToArray();
         SolveIK();
+        Vector3[] jointPositionsDifference = new Vector3[OriginalPositionsOfJoints.Length];
+        Quaternion[] jointRoationsDifference = new Quaternion[OriginalRotationsOfJoints.Length];
+        for(int i = 0; i < OriginalPositionsOfJoints.Length; i++)
+        {
+            jointPositionsDifference[i] = transforms[i].position - OriginalPositionsOfJoints[i];
+            Quaternion inverseRotationOfOriginal = Quaternion.Inverse(OriginalRotationsOfJoints[i]);
+            jointRoationsDifference[i] = inverseRotationOfOriginal * transforms[i].rotation;
+        }
+        var halo = "halo";
+        CalculateMeshChange(jointPositionsDifference, jointRoationsDifference);
     }
+
+    private void CalculateMeshChange(Vector3[] jointPositionsChange, Quaternion[] jointRotationChange)
+    {
+        List<Vector3[]> meshPositionChanges = new List<Vector3[]>();
+        List<Quaternion[]> meshRotationChanges = new List<Quaternion[]>();
+
+        for(int i=0;i < MeshVerticesAssignations.Count(); i++)
+        {
+            var numberOfVerts = skinnedMeshes[i].sharedMesh.vertices.Count();
+            Vector3[] singleMeshChanges= new Vector3[numberOfVerts];
+            Quaternion[] singleMeshRotationChanges= new Quaternion[numberOfVerts];
+            for (int j=0; j< numberOfVerts; j++)
+            {
+                Vector3 vertChangePositionChange = Vector3.zero;
+                Quaternion vertRotationChange = Quaternion.identity;
+                for(int k=0; k < transforms.Count(); k++)
+                {
+                    //calculate mesh vertice position change
+                    var vertAssignation = MeshVerticesAssignations[i][j, k];
+                    float vertAssignationValue = vertAssignation == null ? 0f : vertAssignation.Value;
+                    var positionChange = jointPositionsChange[k];
+                    Vector3 z = positionChange * vertAssignationValue;
+                    vertChangePositionChange += z;
+
+                    //calculate mesh vertice rotation change
+                    var rotationChange = jointRotationChange[k];
+                    var partialRoationChange = Quaternion.LerpUnclamped(Quaternion.identity, rotationChange, vertAssignationValue);
+                    vertRotationChange*= partialRoationChange;
+
+                }
+                singleMeshChanges[j] = vertChangePositionChange;
+                singleMeshRotationChanges[j] = vertRotationChange;
+            }
+            meshPositionChanges.Add(singleMeshChanges);
+            meshRotationChanges.Add(singleMeshRotationChanges);
+        }
+    }
+
 
     // Visual debugging
     /*void OnDrawGizmos()
