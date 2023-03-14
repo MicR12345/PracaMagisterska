@@ -106,6 +106,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
             }
         }
         int sizeOfStruct = sizeof(SimplePointStr);
+        int xd = sizeof(SimpleTriangle);
         RegisterExternalTriangles();
         externalTriangles = externalTrianglesFull.ToArray();
         forceComputeShader.SetFloat("k", k);
