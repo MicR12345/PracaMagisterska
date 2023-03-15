@@ -6,7 +6,7 @@ using System.Net.Sockets;
 using UnityEditor;
 using UnityEngine;
 
-public class InverseKinematics : MonoBehaviour
+public unsafe class InverseKinematics : MonoBehaviour
 {
     public Transform[] transforms;
     public Transform ikTarget;
@@ -28,6 +28,11 @@ public class InverseKinematics : MonoBehaviour
     public float fuzziness = (float)0.3;
     private Vector3[] OriginalPositionsOfJoints;
     private Quaternion[] OriginalRotationsOfJoints;
+    ComputeBuffer trianglesBuffer;
+    ComputeBuffer startingVerticsPositionsBuffer;
+    ComputeBuffer finishVerticesPositionBuffer;
+    private int numberOfAllVertices = 0;
+    private int numberOfAllTriangles = 0;
 
     [Header("Pole target (3 joint chain)")]
     public Transform poleTarget;
@@ -46,6 +51,7 @@ public class InverseKinematics : MonoBehaviour
     void OnEnable()
     {
         skinnedMeshes = FindObjectsOfType<SkinnedMeshRenderer>();
+        
         //MeshFilter[] filteredMeshes = meshFilters.Where(x => !x.name.Contains("IKJoint") && !x.name.Contains("GroupCube")).ToArray();
 
         MeshRenderer cubeBordersMesh = CubeBorders.GetComponent<MeshRenderer>();
@@ -105,6 +111,10 @@ public class InverseKinematics : MonoBehaviour
             // Move the iteration to next joint in the chain
             current = transforms[i];
         }
+        int sizeOfStruct = sizeof(SimpleTriangle);
+        trianglesBuffer = new ComputeBuffer(numberOfAllTriangles / 3, sizeOfStruct, ComputeBufferType.Structured);
+        startingVerticsPositionsBuffer = new ComputeBuffer(numberOfAllVertices, sizeof(Vertice), ComputeBufferType.Structured);
+        finishVerticesPositionBuffer = new ComputeBuffer(numberOfAllVertices, sizeof(Vertice), ComputeBufferType.Structured);
     }
 
     public void AssignVerticesToCentroids()
@@ -113,6 +123,8 @@ public class InverseKinematics : MonoBehaviour
         Bounds bounds = cubeBordersMesh.bounds;
         for(int i=0;i< skinnedMeshes.Length; i++)
         {
+            numberOfAllVertices += skinnedMeshes[i].sharedMesh.vertices.Count();
+            numberOfAllTriangles += skinnedMeshes[i].sharedMesh.triangles.Count();
             var vertices = skinnedMeshes[i].sharedMesh.vertices;
             float?[,] tableofAssignations = new float?[vertices.Count(), transforms.Count()];
             for(int j=0; j < vertices.Count(); j++)
@@ -300,14 +312,66 @@ public class InverseKinematics : MonoBehaviour
             Quaternion inverseRotationOfOriginal = Quaternion.Inverse(OriginalRotationsOfJoints[i]);
             jointRoationsDifference[i] = inverseRotationOfOriginal * transforms[i].rotation;
         }
-        var halo = "halo";
-        CalculateMeshChange(jointPositionsDifference, jointRoationsDifference);
+        var meshChange = CalculateMeshChange(jointPositionsDifference, jointRoationsDifference);
+        AddBufferData(meshChange);
     }
 
-    private void CalculateMeshChange(Vector3[] jointPositionsChange, Quaternion[] jointRotationChange)
+    private void AddBufferData(List<Vector3[]> verticesPositionChange)
+    {
+        Vector3[] VerticesBeforeChange = new Vector3[numberOfAllVertices];
+        Vector3[] VerticesAfterChange = new Vector3[numberOfAllVertices];
+        SimpleTriangle[] listOfAllTriangles = new SimpleTriangle[numberOfAllTriangles/3];
+        int verticeIndexTracker = 0;
+        int triangleIndexTracker = 0;
+        //offset will be aded because, vertices are being merged into one array so the triangle vertice indexes will 
+        //need offset starting from second mesh
+        int triangleVectorPositionOffset = 0;
+        for(int j=0; j< skinnedMeshes.Length; j++)
+        {
+            for(int k=0; k < skinnedMeshes[j].sharedMesh.vertices.Count(); k++)
+            {
+                var vertBeforeChange = skinnedMeshes[j].sharedMesh.vertices[k];
+                VerticesBeforeChange[verticeIndexTracker] = vertBeforeChange;
+                var positionChange = verticesPositionChange[j][k];
+                VerticesAfterChange[verticeIndexTracker] = vertBeforeChange + positionChange;
+                verticeIndexTracker++;
+            }
+            for(int k=0;k< skinnedMeshes[j].sharedMesh.triangles.Count(); k+=3)
+            {
+                SimpleTriangle triangle = new SimpleTriangle();
+                triangle.t1 = skinnedMeshes[j].sharedMesh.triangles[k]+triangleVectorPositionOffset;
+                triangle.t2 = skinnedMeshes[j].sharedMesh.triangles[k+1]+triangleVectorPositionOffset;
+                triangle.t3 = skinnedMeshes[j].sharedMesh.triangles[k+2]+triangleVectorPositionOffset;
+                listOfAllTriangles[triangleIndexTracker] = triangle;
+                triangleIndexTracker++;
+            }
+            triangleVectorPositionOffset+= skinnedMeshes[j].sharedMesh.vertices.Count();
+            var minx1 = listOfAllTriangles.Min(x => x.t1);
+            var max1 = listOfAllTriangles.Max(x => x.t1);
+            var minx2 = listOfAllTriangles.Min(x => x.t2);
+            var max2 = listOfAllTriangles.Max(x => x.t2);
+            var minx3 = listOfAllTriangles.Min(x => x.t3);
+            var max3 = listOfAllTriangles.Max(x => x.t3);
+        }
+        trianglesBuffer.SetData(listOfAllTriangles);
+        startingVerticsPositionsBuffer.SetData(VerticesBeforeChange);
+        finishVerticesPositionBuffer.SetData(VerticesAfterChange);
+    }
+
+    public void OnDisable()
+    {
+        finishVerticesPositionBuffer.Release();
+        finishVerticesPositionBuffer = null;
+        startingVerticsPositionsBuffer.Release();
+        startingVerticsPositionsBuffer = null;
+        trianglesBuffer.Release();
+        trianglesBuffer = null;
+    }
+
+    private List<Vector3[]> CalculateMeshChange(Vector3[] jointPositionsChange, Quaternion[] jointRotationChange)
     {
         List<Vector3[]> meshPositionChanges = new List<Vector3[]>();
-        List<Quaternion[]> meshRotationChanges = new List<Quaternion[]>();
+        //List<Quaternion[]> meshRotationChanges = new List<Quaternion[]>();
 
         for(int i=0;i < MeshVerticesAssignations.Count(); i++)
         {
@@ -328,17 +392,19 @@ public class InverseKinematics : MonoBehaviour
                     vertChangePositionChange += z;
 
                     //calculate mesh vertice rotation change
-                    var rotationChange = jointRotationChange[k];
-                    var partialRoationChange = Quaternion.LerpUnclamped(Quaternion.identity, rotationChange, vertAssignationValue);
-                    vertRotationChange*= partialRoationChange;
+                    //var rotationChange = jointRotationChange[k];
+                    //var partialRoationChange = Quaternion.LerpUnclamped(Quaternion.identity, rotationChange, vertAssignationValue);
+                    //vertRotationChange*= partialRoationChange;
 
                 }
                 singleMeshChanges[j] = vertChangePositionChange;
-                singleMeshRotationChanges[j] = vertRotationChange;
+                //singleMeshRotationChanges[j] = vertRotationChange;
             }
             meshPositionChanges.Add(singleMeshChanges);
-            meshRotationChanges.Add(singleMeshRotationChanges);
+            //meshRotationChanges.Add(singleMeshRotationChanges);
         }
+
+        return meshPositionChanges;
     }
 
 
@@ -438,5 +504,10 @@ public class InverseKinematics : MonoBehaviour
             Handles.DrawWireDisc(Vector3.up * pointOffset, Vector3.up, _radius);
             Handles.DrawWireDisc(Vector3.down * pointOffset, Vector3.up, _radius);
         }
+    }
+
+    public struct Vertice
+    {
+        public Vector3 position; 
     }
 }
