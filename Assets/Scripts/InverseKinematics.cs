@@ -67,7 +67,12 @@ public unsafe class InverseKinematics : MonoBehaviour
 
         var current = transform;
 
-        AssignVerticesToCentroids();
+        AssignVerticesToCentroids(bounds);
+
+        int sizeOfStruct = sizeof(SimpleTriangle);
+        trianglesBuffer = new ComputeBuffer(numberOfAllTriangles / 3, sizeOfStruct, ComputeBufferType.Structured);
+        startingVerticsPositionsBuffer = new ComputeBuffer(numberOfAllVertices, sizeof(Vector3), ComputeBufferType.Structured);
+        finishVerticesPositionBuffer = new ComputeBuffer(numberOfAllVertices, sizeof(Vector3), ComputeBufferType.Structured);
 
         // For each bone calculate and store the lenght of the bone
         for (var i = 0; i <= jointTransforms.Length; i += 1)
@@ -91,16 +96,11 @@ public unsafe class InverseKinematics : MonoBehaviour
             // Move the iteration to next joint in the chain
             current = transforms[i];
         }
-        int sizeOfStruct = sizeof(SimpleTriangle);
-        trianglesBuffer = new ComputeBuffer(numberOfAllTriangles / 3, sizeOfStruct, ComputeBufferType.Structured);
-        startingVerticsPositionsBuffer = new ComputeBuffer(numberOfAllVertices, sizeof(Vector3), ComputeBufferType.Structured);
-        finishVerticesPositionBuffer = new ComputeBuffer(numberOfAllVertices, sizeof(Vector3), ComputeBufferType.Structured);
+        
     }
 
-    public void AssignVerticesToCentroids()
+    public void AssignVerticesToCentroids(Bounds bounds)
     {
-        MeshRenderer cubeBordersMesh = CubeBorders.GetComponent<MeshRenderer>();
-        Bounds bounds = cubeBordersMesh.bounds;
         for(int i=0;i< skinnedMeshes.Length; i++)
         {
             numberOfAllVertices += skinnedMeshes[i].sharedMesh.vertices.Count();
