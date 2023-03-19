@@ -17,9 +17,13 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     ComputeBuffer pointBuffer;
     ComputeBuffer pointBufferOut;
     ComputeBuffer triangleBuffer;
+
+    ComputeBuffer internalCollisionVelocitiesBuffer;
+
     ComputeBuffer debugBuffer;
     ComputeBuffer debugBuffer2;
     ComputeBuffer externalTrianglesBuffer;
+    
     Vector3[] debug;
     Vector3[] debug2;
     TriVert[] externalTriangles;
@@ -117,11 +121,14 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         debugBuffer = new ComputeBuffer(pointCount,sizeof(Vector3), ComputeBufferType.Structured);
         debugBuffer2 = new ComputeBuffer(pointCount, sizeof(Vector3), ComputeBufferType.Structured);
         externalTrianglesBuffer = new ComputeBuffer(Mathf.Max(externalTriangles.Length,1),sizeof(TriVert),ComputeBufferType.Structured);
+        internalCollisionVelocitiesBuffer = new ComputeBuffer(pointCount, sizeof(Vector3), ComputeBufferType.Structured);
         forceComputeShader.SetBuffer(0, "SimplePoints", pointBuffer);
         forceComputeShader.SetBuffer(0, "SimplePointsOut", pointBufferOut);
+        forceComputeShader.SetBuffer(0, "internalCollisions", internalCollisionVelocitiesBuffer);
 
         collisionComputeShader.SetBuffer(0, "SimplePoints", pointBufferOut);
         collisionComputeShader.SetBuffer(0, "SimplePointsOut", pointBuffer);
+        collisionComputeShader.SetBuffer(0, "internalCollisions", internalCollisionVelocitiesBuffer);
         collisionComputeShader.SetBuffer(0, "Triangles", triangleBuffer);
         collisionComputeShader.SetInt("TriangleCount", triangles.Length);
         collisionComputeShader.SetBuffer(0, "Debug", debugBuffer);
@@ -135,6 +142,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         triangleBuffer.SetData(triangleData);
         pointBuffer.SetData(pointData);
         Vector3[] velocities = new Vector3[pointCount];
+        internalCollisionVelocitiesBuffer.SetData(velocities);
         debug = new Vector3[pointCount];
         debug2 = new Vector3[pointCount];
         
@@ -154,6 +162,9 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         debugBuffer2 = null;
         externalTrianglesBuffer.Release();
         externalTriangles = null;
+        internalCollisionVelocitiesBuffer.Release();
+        internalCollisionVelocitiesBuffer = null;
+
     }
     private void FixedUpdate()
     {

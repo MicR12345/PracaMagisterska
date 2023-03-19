@@ -129,7 +129,7 @@ float Time;
 RWStructuredBuffer<SimplePointStr> SimplePoints;
 RWStructuredBuffer<SimplePointStr> SimplePointsOut;
 StructuredBuffer<SimpleTriangle> Triangles;
-
+RWStructuredBuffer<float3> internalCollisions;
 [numthreads(128,1,1)]
 void CollisionKernel(uint3 id : SV_DispatchThreadID)
 {
@@ -160,6 +160,9 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                         if (dt < 2 * length(sp.velocity))
                         {
                             sp.velocity = sp.velocity - normalize(collisionVector) * 1.1f * length(sp.velocity);
+                            internalCollisions[t.t1] = normalize(collisionVector) * 0.36f * length(sp.velocity);
+                            internalCollisions[t.t2] = normalize(collisionVector) * 0.36f * length(sp.velocity);
+                            internalCollisions[t.t3] = normalize(collisionVector) * 0.36f * length(sp.velocity);
                             //sp.velocity = cross(sp.velocity, collisionVector) * length(sp.velocity);
                         }
                     }
@@ -178,7 +181,12 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                             if (dt >= 0)
                             {
                                 if (dt <= length((connection.position) + (connection.velocity) - end))
+                                {
                                     sp.velocity = float3(0, 0, 0);
+                                    internalCollisions[t.t1] = normalize(collisionVector) * (sp.velocity / 3) * length(sp.velocity);
+                                    internalCollisions[t.t2] = normalize(collisionVector) * (sp.velocity / 3) * length(sp.velocity);
+                                    internalCollisions[t.t3] = normalize(collisionVector) * (sp.velocity / 3) * length(sp.velocity);
+                                }
                                 //sp.velocity = cross(sp.velocity, collisionVector) * length(sp.velocity);
                             }
                         }
