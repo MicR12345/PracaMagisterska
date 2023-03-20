@@ -242,10 +242,11 @@ MonoBehaviour:
   ro: 1
   k: 7
   friction: 0.1
-  timeScale: 0.5
+  timeScale: 0.2
   forceComputeShader: {fileID: 7200000, guid: 2d301b6c2c9a2944f81f94ece1ca7884, type: 3}
   collisionComputeShader: {fileID: 7200000, guid: 286b7f620ce73404d9bcfaf45afdec16, type: 3}
   externalCollisionShader: {fileID: 7200000, guid: 97d793d953437cd4da6d711cab2611f1, type: 3}
+  DynamicCollisionShader: {fileID: 7200000, guid: b0591a940a3642041a60bc8ca056d71d, type: 3}
   anchors:
   - {fileID: 919000050}
   externalObjects:
@@ -308,7 +309,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 484239496}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 3.162221, y: 1.2027298, z: 2.8246224}
+  m_LocalPosition: {x: 1.3, y: 1.2027298, z: 2.8246224}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -387,6 +388,7 @@ MonoBehaviour:
   forceComputeShader: {fileID: 0}
   collisionComputeShader: {fileID: 0}
   externalCollisionShader: {fileID: 0}
+  DynamicCollisionShader: {fileID: 0}
   anchors: []
   externalObjects: []
 --- !u!1 &706445573
@@ -663,7 +665,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 904337647}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 3.162221, y: -6.4872704, z: 5.38}
+  m_LocalPosition: {x: 0.69, y: -6.4872704, z: 2.83}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1288,6 +1290,7 @@ MonoBehaviour:
   forceComputeShader: {fileID: 7200000, guid: 2d301b6c2c9a2944f81f94ece1ca7884, type: 3}
   collisionComputeShader: {fileID: 7200000, guid: 286b7f620ce73404d9bcfaf45afdec16, type: 3}
   externalCollisionShader: {fileID: 7200000, guid: 97d793d953437cd4da6d711cab2611f1, type: 3}
+  DynamicCollisionShader: {fileID: 0}
   anchors:
   - {fileID: 2079299148}
   - {fileID: 737111095}

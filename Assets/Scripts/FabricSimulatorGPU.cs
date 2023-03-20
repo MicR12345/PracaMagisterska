@@ -23,7 +23,11 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     ComputeBuffer debugBuffer;
     ComputeBuffer debugBuffer2;
     ComputeBuffer externalTrianglesBuffer;
-    
+
+    public ComputeBuffer startPositionBuffer;
+    public ComputeBuffer endPositionBuffer;
+    public ComputeBuffer DynamicTriangleBuffer;
+
     Vector3[] debug;
     Vector3[] debug2;
     TriVert[] externalTriangles;
@@ -43,6 +47,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     public ComputeShader forceComputeShader;
     public ComputeShader collisionComputeShader;
     public ComputeShader externalCollisionShader;
+    public ComputeShader DynamicCollisionShader;
     public List<Anchor> anchors = new List<Anchor>();
     public List<MeshFilter> externalObjects = new List<MeshFilter> ();
     private void OnEnable()

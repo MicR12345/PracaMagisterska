@@ -1,0 +1,29 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel DynamicCollision
+struct Connectors
+{
+    float connectionL[24];
+    int number[24];
+};
+struct SimplePointStr
+{
+    float3 position;
+    float mass;
+    int connectorCount;
+    int ignorePhysics;
+    float3 movePosition;
+    float3 velocity;
+    Connectors connectorPositions;
+};
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+int ExtTriangleCount;
+float Time;
+RWStructuredBuffer<SimplePointStr> SimplePoints;
+RWStructuredBuffer<SimplePointStr> SimplePointsOut;
+
+[numthreads(128,1,1)]
+void DynamicCollision(uint3 id : SV_DispatchThreadID)
+{
+    // TODO: insert actual code here!
+}

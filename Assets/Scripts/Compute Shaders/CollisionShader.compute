@@ -134,7 +134,6 @@ RWStructuredBuffer<float3> internalCollisions;
 void CollisionKernel(uint3 id : SV_DispatchThreadID)
 {
     SimplePointStr sp = SimplePoints[id.x];
-
     if (abs(sp.velocity.x) + abs(sp.velocity.y) + abs(sp.velocity.z) > 0.01f || true)
     {
         //Debug[id.x] = sp.position;
@@ -159,10 +158,10 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                     {
                         if (dt < 2 * length(sp.velocity))
                         {
-                            sp.velocity = sp.velocity - normalize(collisionVector) * 1.1f * length(sp.velocity);
-                            internalCollisions[t.t1] = normalize(collisionVector) * 0.36f * length(sp.velocity);
-                            internalCollisions[t.t2] = normalize(collisionVector) * 0.36f * length(sp.velocity);
-                            internalCollisions[t.t3] = normalize(collisionVector) * 0.36f * length(sp.velocity);
+                            sp.velocity = sp.velocity - normalize(collisionVector) * length(sp.velocity);
+                            internalCollisions[t.t1] = internalCollisions[t.t1] + normalize(collisionVector) * 0.33f * length(sp.velocity);
+                            internalCollisions[t.t2] = internalCollisions[t.t2] + normalize(collisionVector) * 0.33f * length(sp.velocity);
+                            internalCollisions[t.t3] = internalCollisions[t.t3] + normalize(collisionVector) * 0.33f * length(sp.velocity);
                             //sp.velocity = cross(sp.velocity, collisionVector) * length(sp.velocity);
                         }
                     }
@@ -182,10 +181,11 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                             {
                                 if (dt <= length((connection.position) + (connection.velocity) - end))
                                 {
+                                    internalCollisions[t.t1] = internalCollisions[t.t1] - normalize(collisionVector) * length(sp.velocity) * 0.33f;
+                                    internalCollisions[t.t2] = internalCollisions[t.t2] - normalize(collisionVector) * length(sp.velocity) * 0.33f;
+                                    internalCollisions[t.t3] = internalCollisions[t.t3] - normalize(collisionVector) * length(sp.velocity) * 0.33f;
+                                    //sp.velocity = sp.velocity - sp.velocity * Time;
                                     sp.velocity = float3(0, 0, 0);
-                                    internalCollisions[t.t1] = normalize(collisionVector) * (sp.velocity / 3) * length(sp.velocity);
-                                    internalCollisions[t.t2] = normalize(collisionVector) * (sp.velocity / 3) * length(sp.velocity);
-                                    internalCollisions[t.t3] = normalize(collisionVector) * (sp.velocity / 3) * length(sp.velocity);
                                 }
                                 //sp.velocity = cross(sp.velocity, collisionVector) * length(sp.velocity);
                             }
