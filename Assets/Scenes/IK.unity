@@ -440,8 +440,6 @@ MonoBehaviour:
   fuzziness: 0.3
   skinnedMeshRenderers:
   - {fileID: 39052321}
-  - {fileID: 516797745}
-  - {fileID: 549951675}
   poleTarget: {fileID: 1417883979}
   debugJoints: 1
   localRotationAxis: 0
@@ -582,11 +580,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 500075948}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!137 &516797745 stripped
-SkinnedMeshRenderer:
-  m_CorrespondingSourceObject: {fileID: 13700022, guid: 8f0565f23a2b58541a475bd3c1393052, type: 3}
-  m_PrefabInstance: {fileID: 923099801}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &547836133
 GameObject:
   m_ObjectHideFlags: 0
@@ -671,11 +664,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!137 &549951675 stripped
-SkinnedMeshRenderer:
-  m_CorrespondingSourceObject: {fileID: 13700028, guid: 8f0565f23a2b58541a475bd3c1393052, type: 3}
-  m_PrefabInstance: {fileID: 923099801}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &588446682
 GameObject:
   m_ObjectHideFlags: 0
@@ -878,7 +866,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 800223382}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1

@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -54,6 +55,8 @@ public unsafe class InverseKinematics : MonoBehaviour
         skinnedMeshes = skinnedMeshRenderers.ToArray();
         MeshRenderer cubeBordersMesh = CubeBorders.GetComponent<MeshRenderer>();
         Bounds bounds = cubeBordersMesh.bounds;
+
+        int numberOfTransforms = transforms.Count();
 
         //IK
         int numberOfJoints = transforms.Length + 1;
@@ -279,21 +282,73 @@ public unsafe class InverseKinematics : MonoBehaviour
         var y = transforms[1].rotation;
     }
 
-    void Update()
+    public bool HasAnyJointMoved(Vector3[] originalPositions)
+    {
+        for(int i=0;i < originalPositions.Length; i++)
+        {
+            if (originalPositions[i] != transforms[i].position)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void FixedUpdate()
     {
         OriginalPositionsOfJoints = transforms.Select(x => x.position).ToArray();
         OriginalRotationsOfJoints = transforms.Select(x => x.rotation).ToArray();
         SolveIK();
-        Vector3[] jointPositionsDifference = new Vector3[OriginalPositionsOfJoints.Length];
-        Quaternion[] jointRoationsDifference = new Quaternion[OriginalRotationsOfJoints.Length];
-        for(int i = 0; i < OriginalPositionsOfJoints.Length; i++)
+
+        var hasAnyJointMoved = HasAnyJointMoved(OriginalPositionsOfJoints);
+
+          if (hasAnyJointMoved)
         {
-            jointPositionsDifference[i] = transforms[i].position - OriginalPositionsOfJoints[i];
-            Quaternion inverseRotationOfOriginal = Quaternion.Inverse(OriginalRotationsOfJoints[i]);
-            jointRoationsDifference[i] = inverseRotationOfOriginal * transforms[i].rotation;
+            Vector3[] jointPositionsDifference = new Vector3[OriginalPositionsOfJoints.Length];
+            Quaternion[] jointRoationsDifference = new Quaternion[OriginalRotationsOfJoints.Length];
+            for (int i = 0; i < OriginalPositionsOfJoints.Length; i++)
+            {
+                jointPositionsDifference[i] = transforms[i].position - OriginalPositionsOfJoints[i];
+                Quaternion inverseRotationOfOriginal = Quaternion.Inverse(OriginalRotationsOfJoints[i]);
+                jointRoationsDifference[i] = inverseRotationOfOriginal * transforms[i].rotation;
+            }
+            var meshChange = CalculateMeshChange(jointPositionsDifference, jointRoationsDifference);
+
+            ApplyPoistionChanges(meshChange);
+            AddBufferData(meshChange);
         }
-        var meshChange = CalculateMeshChange(jointPositionsDifference, jointRoationsDifference);
-        AddBufferData(meshChange);
+    }
+
+    private void ApplyPoistionChanges(List<Vector3[]> verticesPositionChange)
+    {
+        List<Mesh> listOfNewMeshes = new List<Mesh>();
+        for(int i = 0; i < verticesPositionChange.Count; i++)
+        {
+            var mesh = skinnedMeshRenderers[i].sharedMesh;
+            Mesh clone = new Mesh();
+            clone.name = "clone";
+            clone.vertices = mesh.vertices;
+            clone.triangles = mesh.triangles;
+            clone.normals = mesh.normals;
+            clone.uv = mesh.uv;
+
+            Vector3[] newVertices = new Vector3[clone.vertices.Count()];
+
+            for(int j=0;j< mesh.vertices.Count(); j++)
+            {
+                var positionChange = verticesPositionChange[i][j];
+                var originalPosition = mesh.vertices[j];
+                var newPosition = originalPosition + positionChange;
+                newVertices[j] = newPosition;
+            }
+            clone.vertices = newVertices;
+            listOfNewMeshes.Add(clone);
+        }
+
+        for (int i = 0; i < verticesPositionChange.Count; i++)
+        {
+            skinnedMeshRenderers[i].sharedMesh = listOfNewMeshes[i];
+        }
     }
 
     private void AddBufferData(List<Vector3[]> verticesPositionChange)
