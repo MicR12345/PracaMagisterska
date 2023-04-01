@@ -24,9 +24,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     ComputeBuffer debugBuffer2;
     ComputeBuffer externalTrianglesBuffer;
 
-    public ComputeBuffer startPositionBuffer;
-    public ComputeBuffer endPositionBuffer;
-    public ComputeBuffer DynamicTriangleBuffer;
+    public List<InverseKinematics> IKs = new List<InverseKinematics>();
 
     Vector3[] debug;
     Vector3[] debug2;
@@ -47,7 +45,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     public ComputeShader forceComputeShader;
     public ComputeShader collisionComputeShader;
     public ComputeShader externalCollisionShader;
-    public ComputeShader DynamicCollisionShader;
+    public ComputeShader dynamicCollisionShader;
     public List<Anchor> anchors = new List<Anchor>();
     public List<MeshFilter> externalObjects = new List<MeshFilter> ();
     private void OnEnable()
@@ -144,6 +142,9 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         externalCollisionShader.SetBuffer(0, "ExternalTriangles", externalTrianglesBuffer);
         externalCollisionShader.SetInt("ExtTriangleCount", externalTriangles.Length);
         externalTrianglesBuffer.SetData(externalTriangles);
+
+        dynamicCollisionShader.SetBuffer(0, "SimplePoints", pointBufferOut);
+
         triangleBuffer.SetData(triangleData);
         pointBuffer.SetData(pointData);
         Vector3[] velocities = new Vector3[pointCount];
@@ -190,6 +191,13 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
             forceComputeShader.Dispatch(0, (pointCount / 128) + 1, 1, 1);
             collisionComputeShader.Dispatch(0, (pointCount / 128) + 1, 1, 1);
             externalCollisionShader.Dispatch(0, (pointCount / 128) + 1, 1, 1);
+            foreach (InverseKinematics ik in IKs)
+            {
+                dynamicCollisionShader.SetBuffer(0, "triangles", ik.trianglesBuffer);
+                dynamicCollisionShader.SetBuffer(0, "startPoints", ik.startingVerticsPositionsBuffer);
+                dynamicCollisionShader.SetBuffer(0, "endPoints", ik.finishVerticesPositionBuffer);
+                dynamicCollisionShader.Dispatch(0, (ik.numberOfAllTriangles / 128) + 1, 1, 1);
+            }
             pointBufferOut.GetData(pointData);
             CreateNewMesh();
         }
