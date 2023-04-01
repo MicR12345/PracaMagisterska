@@ -29,11 +29,11 @@ public unsafe class InverseKinematics : MonoBehaviour
     public float fuzziness = (float)0.3;
     private Vector3[] OriginalPositionsOfJoints;
     private Quaternion[] OriginalRotationsOfJoints;
-    ComputeBuffer trianglesBuffer;
-    ComputeBuffer startingVerticsPositionsBuffer;
-    ComputeBuffer finishVerticesPositionBuffer;
+    public ComputeBuffer trianglesBuffer;
+    public ComputeBuffer startingVerticsPositionsBuffer;
+    public ComputeBuffer finishVerticesPositionBuffer;
     private int numberOfAllVertices = 0;
-    private int numberOfAllTriangles = 0;
+    public int numberOfAllTriangles = 0;
     public List<SkinnedMeshRenderer> skinnedMeshRenderers = new List<SkinnedMeshRenderer>();
 
     [Header("Pole target (3 joint chain)")]
