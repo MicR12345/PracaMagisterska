@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -33,6 +34,7 @@ public unsafe class InverseKinematics : MonoBehaviour
     ComputeBuffer finishVerticesPositionBuffer;
     private int numberOfAllVertices = 0;
     private int numberOfAllTriangles = 0;
+    public List<SkinnedMeshRenderer> skinnedMeshRenderers = new List<SkinnedMeshRenderer>();
 
     [Header("Pole target (3 joint chain)")]
     public Transform poleTarget;
@@ -50,32 +52,13 @@ public unsafe class InverseKinematics : MonoBehaviour
 
     void OnEnable()
     {
-        skinnedMeshes = FindObjectsOfType<SkinnedMeshRenderer>();
-        
-        //MeshFilter[] filteredMeshes = meshFilters.Where(x => !x.name.Contains("IKJoint") && !x.name.Contains("GroupCube")).ToArray();
-
+        skinnedMeshes = skinnedMeshRenderers.ToArray();
         MeshRenderer cubeBordersMesh = CubeBorders.GetComponent<MeshRenderer>();
         Bounds bounds = cubeBordersMesh.bounds;
-        var x = transforms[1].position;
-        var y = transforms[1].rotation;
-        /*
-        foreach(var x in meshFilters)
-        {
-            bool isAnyInisde = false;
-            foreach(var vert in x.sharedMesh.vertices)
-            {
-                if (bounds.Contains(vert))
-                {
-                    isAnyInisde = true;
-                    break;
-                }
-            }
 
-            
-        }*/
+        int numberOfTransforms = transforms.Count();
 
         //IK
-
         int numberOfJoints = transforms.Length + 1;
         jointChainLength = 0;
         jointTransforms = new Transform[numberOfJoints];
@@ -87,7 +70,12 @@ public unsafe class InverseKinematics : MonoBehaviour
 
         var current = transform;
 
-        AssignVerticesToCentroids();
+        AssignVerticesToCentroids(bounds);
+
+        int sizeOfStruct = sizeof(SimpleTriangle);
+        trianglesBuffer = new ComputeBuffer(numberOfAllTriangles / 3, sizeOfStruct, ComputeBufferType.Structured);
+        startingVerticsPositionsBuffer = new ComputeBuffer(numberOfAllVertices, sizeof(Vector3), ComputeBufferType.Structured);
+        finishVerticesPositionBuffer = new ComputeBuffer(numberOfAllVertices, sizeof(Vector3), ComputeBufferType.Structured);
 
         // For each bone calculate and store the lenght of the bone
         for (var i = 0; i <= jointTransforms.Length; i += 1)
@@ -111,16 +99,11 @@ public unsafe class InverseKinematics : MonoBehaviour
             // Move the iteration to next joint in the chain
             current = transforms[i];
         }
-        int sizeOfStruct = sizeof(SimpleTriangle);
-        trianglesBuffer = new ComputeBuffer(numberOfAllTriangles / 3, sizeOfStruct, ComputeBufferType.Structured);
-        startingVerticsPositionsBuffer = new ComputeBuffer(numberOfAllVertices, sizeof(Vertice), ComputeBufferType.Structured);
-        finishVerticesPositionBuffer = new ComputeBuffer(numberOfAllVertices, sizeof(Vertice), ComputeBufferType.Structured);
+        
     }
 
-    public void AssignVerticesToCentroids()
+    public void AssignVerticesToCentroids(Bounds bounds)
     {
-        MeshRenderer cubeBordersMesh = CubeBorders.GetComponent<MeshRenderer>();
-        Bounds bounds = cubeBordersMesh.bounds;
         for(int i=0;i< skinnedMeshes.Length; i++)
         {
             numberOfAllVertices += skinnedMeshes[i].sharedMesh.vertices.Count();
@@ -299,21 +282,73 @@ public unsafe class InverseKinematics : MonoBehaviour
         var y = transforms[1].rotation;
     }
 
-    void Update()
+    public bool HasAnyJointMoved(Vector3[] originalPositions)
+    {
+        for(int i=0;i < originalPositions.Length; i++)
+        {
+            if (originalPositions[i] != transforms[i].position)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void FixedUpdate()
     {
         OriginalPositionsOfJoints = transforms.Select(x => x.position).ToArray();
         OriginalRotationsOfJoints = transforms.Select(x => x.rotation).ToArray();
         SolveIK();
-        Vector3[] jointPositionsDifference = new Vector3[OriginalPositionsOfJoints.Length];
-        Quaternion[] jointRoationsDifference = new Quaternion[OriginalRotationsOfJoints.Length];
-        for(int i = 0; i < OriginalPositionsOfJoints.Length; i++)
+
+        var hasAnyJointMoved = HasAnyJointMoved(OriginalPositionsOfJoints);
+
+          if (hasAnyJointMoved)
         {
-            jointPositionsDifference[i] = transforms[i].position - OriginalPositionsOfJoints[i];
-            Quaternion inverseRotationOfOriginal = Quaternion.Inverse(OriginalRotationsOfJoints[i]);
-            jointRoationsDifference[i] = inverseRotationOfOriginal * transforms[i].rotation;
+            Vector3[] jointPositionsDifference = new Vector3[OriginalPositionsOfJoints.Length];
+            Quaternion[] jointRoationsDifference = new Quaternion[OriginalRotationsOfJoints.Length];
+            for (int i = 0; i < OriginalPositionsOfJoints.Length; i++)
+            {
+                jointPositionsDifference[i] = transforms[i].position - OriginalPositionsOfJoints[i];
+                Quaternion inverseRotationOfOriginal = Quaternion.Inverse(OriginalRotationsOfJoints[i]);
+                jointRoationsDifference[i] = inverseRotationOfOriginal * transforms[i].rotation;
+            }
+            var meshChange = CalculateMeshChange(jointPositionsDifference, jointRoationsDifference);
+
+            ApplyPoistionChanges(meshChange);
+            AddBufferData(meshChange);
         }
-        var meshChange = CalculateMeshChange(jointPositionsDifference, jointRoationsDifference);
-        AddBufferData(meshChange);
+    }
+
+    private void ApplyPoistionChanges(List<Vector3[]> verticesPositionChange)
+    {
+        List<Mesh> listOfNewMeshes = new List<Mesh>();
+        for(int i = 0; i < verticesPositionChange.Count; i++)
+        {
+            var mesh = skinnedMeshRenderers[i].sharedMesh;
+            Mesh clone = new Mesh();
+            clone.name = "clone";
+            clone.vertices = mesh.vertices;
+            clone.triangles = mesh.triangles;
+            clone.normals = mesh.normals;
+            clone.uv = mesh.uv;
+
+            Vector3[] newVertices = new Vector3[clone.vertices.Count()];
+
+            for(int j=0;j< mesh.vertices.Count(); j++)
+            {
+                var positionChange = verticesPositionChange[i][j];
+                var originalPosition = mesh.vertices[j];
+                var newPosition = originalPosition + positionChange;
+                newVertices[j] = newPosition;
+            }
+            clone.vertices = newVertices;
+            listOfNewMeshes.Add(clone);
+        }
+
+        for (int i = 0; i < verticesPositionChange.Count; i++)
+        {
+            skinnedMeshRenderers[i].sharedMesh = listOfNewMeshes[i];
+        }
     }
 
     private void AddBufferData(List<Vector3[]> verticesPositionChange)
@@ -405,109 +440,5 @@ public unsafe class InverseKinematics : MonoBehaviour
         }
 
         return meshPositionChanges;
-    }
-
-
-    // Visual debugging
-    /*void OnDrawGizmos()
-    {
-        int numberOfJoints = transforms.Length + 1;
-        if (debugJoints == true)
-        {
-            var current = transform;
-            var child = transform.GetChild(0);
-
-            for (int i = 0; i < numberOfJoints; i += 1)
-            {
-                if (i == numberOfJoints - 2)
-                {
-                    var length = Vector3.Distance(current.position, child.position);
-                    DrawWireCapsule(current.position + (child.position - current.position).normalized * length / 2, Quaternion.FromToRotation(Vector3.up, (child.position - current.position).normalized), gizmoSize, length, Color.cyan);
-                    break;
-                }
-                else
-                {
-                    var length = Vector3.Distance(current.position, child.position);
-                    DrawWireCapsule(current.position + (child.position - current.position).normalized * length / 2, Quaternion.FromToRotation(Vector3.up, (child.position - current.position).normalized), gizmoSize, length, Color.cyan);
-                    current = current.GetChild(0);
-                    child = current.GetChild(0);
-                }
-            }
-        }
-
-        if (localRotationAxis == true)
-        {
-            var current = transform;
-            for (int i = 0; i < numberOfJoints; i += 1)
-            {
-                if (i == numberOfJoints - 1)
-                {
-                    drawHandle(current);
-                }
-                else
-                {
-                    drawHandle(current);
-                    current = current.GetChild(0);
-                }
-            }
-        }
-
-        var start = transform;
-        var mid = start.GetChild(0);
-        var end = mid.GetChild(0);
-
-        if (poleRotationAxis == true && poleTarget != null && numberOfJoints < 4)
-        {
-            Handles.color = Color.white;
-            Handles.DrawLine(start.position, end.position);
-        }
-
-        if (poleDirection == true && poleTarget != null && numberOfJoints < 4)
-        {
-            Handles.color = Color.grey;
-            Handles.DrawLine(start.position, poleTarget.position);
-            Handles.DrawLine(end.position, poleTarget.position);
-        }
-
-    }
-    */
-    void drawHandle(Transform debugJoint)
-    {
-        Handles.color = Handles.xAxisColor;
-        Handles.ArrowHandleCap(0, debugJoint.position, debugJoint.rotation * Quaternion.LookRotation(Vector3.right), gizmoSize, EventType.Repaint);
-
-        Handles.color = Handles.yAxisColor;
-        Handles.ArrowHandleCap(0, debugJoint.position, debugJoint.rotation * Quaternion.LookRotation(Vector3.up), gizmoSize, EventType.Repaint);
-
-        Handles.color = Handles.zAxisColor;
-        Handles.ArrowHandleCap(0, debugJoint.position, debugJoint.rotation * Quaternion.LookRotation(Vector3.forward), gizmoSize, EventType.Repaint);
-    }
-
-    public static void DrawWireCapsule(Vector3 _pos, Quaternion _rot, float _radius, float _height, Color _color = default(Color))
-    {
-        Handles.color = _color;
-        Matrix4x4 angleMatrix = Matrix4x4.TRS(_pos, _rot, Handles.matrix.lossyScale);
-        using (new Handles.DrawingScope(angleMatrix))
-        {
-            var pointOffset = (_height - (_radius * 2)) / 2;
-
-            Handles.DrawWireArc(Vector3.up * pointOffset, Vector3.left, Vector3.back, -180, _radius);
-            Handles.DrawLine(new Vector3(0, pointOffset, -_radius), new Vector3(0, -pointOffset, -_radius));
-            Handles.DrawLine(new Vector3(0, pointOffset, _radius), new Vector3(0, -pointOffset, _radius));
-            Handles.DrawWireArc(Vector3.down * pointOffset, Vector3.left, Vector3.back, 180, _radius);
-
-            Handles.DrawWireArc(Vector3.up * pointOffset, Vector3.back, Vector3.left, 180, _radius);
-            Handles.DrawLine(new Vector3(-_radius, pointOffset, 0), new Vector3(-_radius, -pointOffset, 0));
-            Handles.DrawLine(new Vector3(_radius, pointOffset, 0), new Vector3(_radius, -pointOffset, 0));
-            Handles.DrawWireArc(Vector3.down * pointOffset, Vector3.back, Vector3.left, -180, _radius);
-
-            Handles.DrawWireDisc(Vector3.up * pointOffset, Vector3.up, _radius);
-            Handles.DrawWireDisc(Vector3.down * pointOffset, Vector3.up, _radius);
-        }
-    }
-
-    public struct Vertice
-    {
-        public Vector3 position; 
     }
 }

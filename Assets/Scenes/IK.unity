@@ -123,6 +123,11 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!137 &39052321 stripped
+SkinnedMeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 13700018, guid: 8f0565f23a2b58541a475bd3c1393052, type: 3}
+  m_PrefabInstance: {fileID: 923099801}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &121002947
 GameObject:
   m_ObjectHideFlags: 0
@@ -433,6 +438,8 @@ MonoBehaviour:
   tolerance: 0.05
   CubeBorders: {fileID: 800223382}
   fuzziness: 0.3
+  skinnedMeshRenderers:
+  - {fileID: 39052321}
   poleTarget: {fileID: 1417883979}
   debugJoints: 1
   localRotationAxis: 0
@@ -859,7 +866,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 800223382}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
