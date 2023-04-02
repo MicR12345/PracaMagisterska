@@ -295,10 +295,12 @@ public unsafe class InverseKinematics : MonoBehaviour
         for(int i=0; i<numberOfMeshes; i++)
         {
             numberOfAssignations.Add(new int[skinnedMeshRenderers[i].sharedMesh.vertices.Count()]);
+            numberOfAllVertices += skinnedMeshes[i].sharedMesh.vertices.Count();
+            numberOfAllTriangles += skinnedMeshes[i].sharedMesh.triangles.Count();
         }
 
         int localNumberOfJoints = transforms.Count();
-
+            
         for(int i=0; i<localNumberOfJoints; i++)
         {
             List<Assignation> assignationSingle = new List<Assignation>();
@@ -348,10 +350,20 @@ public unsafe class InverseKinematics : MonoBehaviour
                 Assignation singleAssignation = assignationsToJoint[j];
                 int numberOfAssignationsToJoints = allNumbersOfAssignations[singleAssignation.MeshNumber][singleAssignation.VertexNumber];
 
-                float percentage = 1f / (float)numberOfAssignationsToJoints;
+                Vector3 vert = skinnedMeshRenderers[singleAssignation.MeshNumber].sharedMesh.vertices[singleAssignation.VertexNumber];
 
+                var x = Vector3.Magnitude(vert - OriginalPositionsOfJoints[i]);
+                var y = vert - OriginalPositionsOfJoints[i] - singleJointChange;
+                var z = Vector3.Magnitude(vert - OriginalPositionsOfJoints[i] - singleJointChange);
+
+                var wu = (z - x) * (-y);
+                
+
+                //float percentage = 1f / (float)numberOfAssignationsToJoints;
+                float percentage = 1f;
                 Vector3 verticeChange = singleJointChange * percentage;
-                meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber] += verticeChange;
+                //meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber] += verticeChange;
+                meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber] += wu;
             }
         }
 
