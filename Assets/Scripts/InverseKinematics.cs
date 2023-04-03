@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Sockets;
 using UnityEditor;
 using UnityEngine;
@@ -35,6 +36,7 @@ public unsafe class InverseKinematics : MonoBehaviour
     private int numberOfAllVertices = 0;
     public int numberOfAllTriangles = 0;
     public List<SkinnedMeshRenderer> skinnedMeshRenderers = new List<SkinnedMeshRenderer>();
+    private List<Assignation[]> verticeAssignations;
 
     [Header("Pole target (3 joint chain)")]
     public Transform poleTarget;
@@ -53,8 +55,7 @@ public unsafe class InverseKinematics : MonoBehaviour
     void OnEnable()
     {
         skinnedMeshes = skinnedMeshRenderers.ToArray();
-        MeshRenderer cubeBordersMesh = CubeBorders.GetComponent<MeshRenderer>();
-        Bounds bounds = cubeBordersMesh.bounds;
+        
 
         int numberOfTransforms = transforms.Count();
 
@@ -70,12 +71,13 @@ public unsafe class InverseKinematics : MonoBehaviour
 
         var current = transform;
 
-        AssignVerticesToCentroids(bounds);
+        newAssignation();
+        //AssignVerticesToCentroids(bounds);
 
-        int sizeOfStruct = sizeof(SimpleTriangle);
-        trianglesBuffer = new ComputeBuffer(numberOfAllTriangles / 3, sizeOfStruct, ComputeBufferType.Structured);
-        startingVerticsPositionsBuffer = new ComputeBuffer(numberOfAllVertices, sizeof(Vector3), ComputeBufferType.Structured);
-        finishVerticesPositionBuffer = new ComputeBuffer(numberOfAllVertices, sizeof(Vector3), ComputeBufferType.Structured);
+        //int sizeOfStruct = sizeof(SimpleTriangle);
+        //trianglesBuffer = new ComputeBuffer(numberOfAllTriangles / 3, sizeOfStruct, ComputeBufferType.Structured);
+        //startingVerticsPositionsBuffer = new ComputeBuffer(numberOfAllVertices, sizeof(Vector3), ComputeBufferType.Structured);
+        //finishVerticesPositionBuffer = new ComputeBuffer(numberOfAllVertices, sizeof(Vector3), ComputeBufferType.Structured);
 
         // For each bone calculate and store the lenght of the bone
         for (var i = 0; i <= jointTransforms.Length; i += 1)
@@ -302,21 +304,21 @@ public unsafe class InverseKinematics : MonoBehaviour
 
         var hasAnyJointMoved = HasAnyJointMoved(OriginalPositionsOfJoints);
 
-          if (hasAnyJointMoved)
-        {
-            Vector3[] jointPositionsDifference = new Vector3[OriginalPositionsOfJoints.Length];
-            Quaternion[] jointRoationsDifference = new Quaternion[OriginalRotationsOfJoints.Length];
-            for (int i = 0; i < OriginalPositionsOfJoints.Length; i++)
+            if (hasAnyJointMoved)
             {
-                jointPositionsDifference[i] = transforms[i].position - OriginalPositionsOfJoints[i];
-                Quaternion inverseRotationOfOriginal = Quaternion.Inverse(OriginalRotationsOfJoints[i]);
-                jointRoationsDifference[i] = inverseRotationOfOriginal * transforms[i].rotation;
+                Vector3[] jointPositionsDifference = new Vector3[OriginalPositionsOfJoints.Length];
+                Quaternion[] jointRoationsDifference = new Quaternion[OriginalRotationsOfJoints.Length];
+                for (int i = 0; i < OriginalPositionsOfJoints.Length; i++)
+                {
+                    jointPositionsDifference[i] = transforms[i].position - OriginalPositionsOfJoints[i];
+                    Quaternion inverseRotationOfOriginal = Quaternion.Inverse(OriginalRotationsOfJoints[i]);
+                    jointRoationsDifference[i] = inverseRotationOfOriginal * transforms[i].rotation;
+                }
+                //var meshChange = CalculateMeshChange(jointPositionsDifference, jointRoationsDifference);
+                var meshChange = CalculateMeshChanges();
+                ApplyPoistionChanges(meshChange);
+                //AddBufferData(meshChange);
             }
-            var meshChange = CalculateMeshChange(jointPositionsDifference, jointRoationsDifference);
-
-            ApplyPoistionChanges(meshChange);
-            AddBufferData(meshChange);
-        }
     }
 
     private void ApplyPoistionChanges(List<Vector3[]> verticesPositionChange)
@@ -324,15 +326,9 @@ public unsafe class InverseKinematics : MonoBehaviour
         List<Mesh> listOfNewMeshes = new List<Mesh>();
         for(int i = 0; i < verticesPositionChange.Count; i++)
         {
-            var mesh = skinnedMeshRenderers[i].sharedMesh;
-            Mesh clone = new Mesh();
-            clone.name = "clone";
-            clone.vertices = mesh.vertices;
-            clone.triangles = mesh.triangles;
-            clone.normals = mesh.normals;
-            clone.uv = mesh.uv;
+            var mesh = Instantiate(skinnedMeshRenderers[i].sharedMesh);
 
-            Vector3[] newVertices = new Vector3[clone.vertices.Count()];
+            Vector3[] newVertices = new Vector3[mesh.vertices.Count()];
 
             for(int j=0;j< mesh.vertices.Count(); j++)
             {
@@ -341,8 +337,8 @@ public unsafe class InverseKinematics : MonoBehaviour
                 var newPosition = originalPosition + positionChange;
                 newVertices[j] = newPosition;
             }
-            clone.vertices = newVertices;
-            listOfNewMeshes.Add(clone);
+            mesh.vertices = newVertices;
+            listOfNewMeshes.Add(mesh);
         }
 
         for (int i = 0; i < verticesPositionChange.Count; i++)
@@ -403,6 +399,43 @@ public unsafe class InverseKinematics : MonoBehaviour
         trianglesBuffer = null;
     }
 
+    public List<Vector3[]> CalculateMeshChanges()
+    {
+        var meshChanges = new List<Vector3[]>();
+
+        var numberOfMeshses = skinnedMeshRenderers.Count();
+
+        for(int i = 0; i < numberOfMeshses; i++)
+        {
+            var verts = skinnedMeshRenderers[i].sharedMesh.vertices;
+            var numberOfVerts = verts.Count();
+
+            var meshChangesSingle = new Vector3[numberOfVerts];
+
+            for(int j = 0; j < numberOfVerts; j++)
+            {
+                var assignation = verticeAssignations[i][j];
+                var jointIndex = assignation.JonitIndex;
+
+                var distanceToCrossing = assignation.DistanceFromStartToCrossing;
+
+                var startJoint = transforms[jointIndex].position;
+                var endJoint = transforms[jointIndex+1].position;
+
+                Vector3 direction = endJoint - startJoint;
+                Vector3 normalizedDirection = direction.normalized;
+                Vector3 vertex = startJoint + normalizedDirection * distanceToCrossing;
+
+                var change = vertex - assignation.OldCrossing;
+                meshChangesSingle[j] = change;
+                
+            }
+            meshChanges.Add(meshChangesSingle);
+        }
+
+        return meshChanges;
+    }
+
     private List<Vector3[]> CalculateMeshChange(Vector3[] jointPositionsChange, Quaternion[] jointRotationChange)
     {
         List<Vector3[]> meshPositionChanges = new List<Vector3[]>();
@@ -440,5 +473,98 @@ public unsafe class InverseKinematics : MonoBehaviour
         }
 
         return meshPositionChanges;
+    }
+
+    private Vector3 CalculatePerpendicularVector(Vector3 start, Vector3 end, Vector3 vertice)
+    {
+        // Calculate the segment vector (SE)
+        Vector3 SE = end - start;
+
+        // Calculate the vertice vector (SV)
+        Vector3 SV = vertice - start;
+
+        // Calculate the perpendicular vector using the cross product
+        Vector3 perpendicular = Vector3.Cross(SV, SE);
+
+        return perpendicular;
+    }
+
+    private void newAssignation()
+    {
+        var numberOfMeshes = skinnedMeshRenderers.Count();
+        List<Assignation[]> verticesAssignations = new List<Assignation[]>();
+        List<float[]> assignationsLength = new List<float[]>();
+
+
+        for(int i=0; i<numberOfMeshes; i++)
+        {
+            var verts = skinnedMeshRenderers[i].sharedMesh.vertices;
+            var numberOfVerts = verts.Count();
+
+            Assignation[] assignationsSingle = new Assignation[numberOfVerts];
+            float[] assignationsLengthSingle = new float[numberOfVerts];
+
+            for(int j=0; j<numberOfVerts; j++)
+            {
+                float minDistanceOfPerpendicularVector = -1;
+                float distanceToCrossing = 0;
+                int asignationIndex = 0;
+                Vector3 crossingPosition = Vector3.zero;
+                for(int k=0; k<transforms.Count()-1; k++)
+                {
+                    Vector3 startingVector = transforms[k].position;
+                    Vector3 endVector = transforms[k + 1].position;
+
+                    Vector3 directionVector = endVector - startingVector;
+
+
+                    Vector3 perpendicularVector = Vector3.Cross(directionVector, verts[j]);
+
+                    var perpVector = CalculatePerpendicularVector(startingVector, endVector, verts[j]);
+                    float lengthOfPerpendicularVector = perpendicularVector.magnitude;
+
+                    Vector3 crossing = startingVector + Vector3.Project(verts[j] - startingVector, directionVector);
+                    float localDistanceToCrossing = Vector3.Distance(startingVector, crossing);
+
+                    if(minDistanceOfPerpendicularVector < 0)
+                    {
+                        minDistanceOfPerpendicularVector = lengthOfPerpendicularVector;
+                        distanceToCrossing = localDistanceToCrossing;
+                        asignationIndex = k;
+                        crossingPosition = crossing;
+                    }
+
+                    if(lengthOfPerpendicularVector < minDistanceOfPerpendicularVector)
+                    {
+                        minDistanceOfPerpendicularVector = lengthOfPerpendicularVector;
+                        distanceToCrossing = localDistanceToCrossing;
+                        asignationIndex = k;
+                        crossingPosition = crossing;
+                    }
+                }
+
+                Assignation assignation = new Assignation(asignationIndex, distanceToCrossing, crossingPosition);
+                assignationsSingle[j] = assignation;
+            }
+            verticesAssignations.Add(assignationsSingle);
+        }
+
+        verticeAssignations = verticesAssignations;
+    }
+
+    internal class Assignation
+    {
+        public readonly int JonitIndex;
+        public readonly float DistanceFromStartToCrossing;
+        public Vector3 OldCrossing;
+        public Vector3 NewCrossing;
+
+        public Assignation(int jonitIndex, float distanceFromStartToCrossing, Vector3 crossing)
+        {
+            JonitIndex = jonitIndex;
+            DistanceFromStartToCrossing = distanceFromStartToCrossing;
+            OldCrossing = crossing;
+            NewCrossing = crossing;
+        }
     }
 }
