@@ -270,7 +270,7 @@ public unsafe class InverseKinematics : MonoBehaviour
                 jointPositionsDifference[i] = transforms[i].position - OriginalPositionsOfJoints[i];
             }
 
-            List<Vector3[]> meshChanges = CalculateMeshChanges3(jointPositionsDifference);
+            List<Vector3[]> meshChanges = CalculateMeshChanges(jointPositionsDifference);
             ApplyMeshChanges(meshChanges);
         }
     }
@@ -329,168 +329,44 @@ public unsafe class InverseKinematics : MonoBehaviour
         allNumbersOfAssignations = numberOfAssignations;
         allAsignations = asignations;
     }
-
     private List<Vector3[]> CalculateMeshChanges(Vector3[] jointChanges)
     {
         List<Vector3[]> meshChanges = new List<Vector3[]>();
-        for(int i=0; i<numberOfMeshes; i++)
-        {
-            meshChanges.Add(new Vector3[numberOfVertsInMeshes[i]]);
-        }
-
-        for(int i=0; i<transforms.Count(); i++)
-        {
-            List<Assignation> assignationsToJoint = allAsignations[i];
-            int numberOfAssignations = assignationsToJoint.Count();
-
-            Vector3 singleJointChange = jointChanges[i];
-
-            for(int j=0; j<numberOfAssignations; j++)
-            {
-                Assignation singleAssignation = assignationsToJoint[j];
-                int numberOfAssignationsToJoints = allNumbersOfAssignations[singleAssignation.MeshNumber][singleAssignation.VertexNumber];
-
-                Vector3 vert = skinnedMeshRenderers[singleAssignation.MeshNumber].sharedMesh.vertices[singleAssignation.VertexNumber];
-
-                var x = Vector3.Magnitude(OriginalPositionsOfJoints[i] - vert);
-                var y = (OriginalPositionsOfJoints[i] + singleJointChange) - vert;
-                var z = Vector3.Magnitude(y);
-
-                var wu = (x - z) * -y;
-                
-
-                float percentage = 1f / (float)numberOfAssignationsToJoints;
-                Vector3 verticeChange = singleJointChange * percentage;
-                //meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber] += verticeChange;
-                meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber] += singleJointChange * (z-x);
-            }
-        }
-
-        return meshChanges;
-    }
-
-    private List<Vector3[]> CalculateMeshChanges2(Vector3[] jointChanges)
-    {
-        List<Vector3[]> meshChanges = new List<Vector3[]>();
         for (int i = 0; i < numberOfMeshes; i++)
         {
-            meshChanges.Add(new Vector3[numberOfVertsInMeshes[i]]);
+            meshChanges.Add((Vector3[])skinnedMeshRenderers[i].sharedMesh.vertices.Clone());
         }
 
-        for (int i = transforms.Count()-1; i >= 0; i--)
+        Vector3[] currentPositions = (Vector3[])OriginalPositionsOfJoints.Clone();
+
+        for (int i = 1; i < transforms.Length; i++)
         {
             List<Assignation> assignationsToJoint = allAsignations[i];
             int numberOfAssignations = assignationsToJoint.Count();
 
-            Vector3 currentJointPosition = transforms[i].position;
+            Vector3 desiredJointPosition = transforms[i].position;
 
-            Vector3 singleJointChange = jointChanges[i];
+            Vector3 currentSegmentStart = currentPositions[i-1];
+
+            Vector3 desiredSegmentVector = desiredJointPosition - currentPositions[i-1];
+
+            Vector3 currentSegmentVector = currentPositions[i] - currentPositions[i - 1];
+
+            Quaternion difference = Quaternion.FromToRotation(Vector3.Normalize(currentSegmentVector), Vector3.Normalize(desiredSegmentVector));
+
+            Matrix4x4 rotation = Matrix4x4.Rotate(difference);
 
             for (int j = 0; j < numberOfAssignations; j++)
             {
                 Assignation singleAssignation = assignationsToJoint[j];
-                int numberOfAssignationsToJoints = allNumbersOfAssignations[singleAssignation.MeshNumber][singleAssignation.VertexNumber];
-                Vector3 vert = skinnedMeshRenderers[singleAssignation.MeshNumber].sharedMesh.vertices[singleAssignation.VertexNumber];
-                Vector3 closestSegmentEndPosition;
-                Vector3 oldClosestSegmentEnd;
-                Vector3 previousSegmentTransform = Vector3.zero;
+                Vector3 vert = meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber];
 
-                if (i < transforms.Count()-1)
-                {
-                    closestSegmentEndPosition = transforms[i + 1].position;
-                    oldClosestSegmentEnd = OriginalPositionsOfJoints[i + 1];
-                    previousSegmentTransform = transforms[i + 1].position - OriginalPositionsOfJoints[i + 1];
-                    Vector3 segmentVector = closestSegmentEndPosition - currentJointPosition;
-                    Vector3 segmentNormalized = Vector3.Normalize(segmentVector);
-                    Vector3 oldSegmentVector = oldClosestSegmentEnd - (currentJointPosition - singleJointChange);
-                    Vector3 oldSegmentNormalized = Vector3.Normalize(oldSegmentVector);
-                    Matrix4x4 rotation = Matrix4x4.Rotate(Quaternion.FromToRotation(oldSegmentNormalized, segmentNormalized));
-                    Vector3 newPt = rotation.MultiplyPoint3x4(vert);
-
-                    meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber] += (newPt - vert) - previousSegmentTransform;
-                }
-                else
-                {
-                    //meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber] += singleJointChange;
-                }
-
-                
+                Vector3 newPt = rotation.MultiplyPoint3x4(vert - currentSegmentStart) + currentSegmentStart;
+                meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber] = newPt;
             }
-        }
-
-        return meshChanges;
-    }
-    private List<Vector3[]> CalculateMeshChanges3(Vector3[] jointChanges)
-    {
-        List<Vector3[]> meshChanges = new List<Vector3[]>();
-        for (int i = 0; i < numberOfMeshes; i++)
-        {
-            meshChanges.Add(new Vector3[numberOfVertsInMeshes[i]]);
-        }
-
-        for (int i = transforms.Count()-1; i >= 1; i--)
-        {
-            List<Assignation> assignationsToJoint = allAsignations[i];
-            int numberOfAssignations = assignationsToJoint.Count();
-
-            Vector3 currentJointPosition = transforms[i].position;
-
-            Vector3 singleJointChange = jointChanges[i];
-
-            for (int j = 0; j < numberOfAssignations; j++)
+            for (int j = i; j < transforms.Length; j++)
             {
-                Assignation singleAssignation = assignationsToJoint[j];
-                int numberOfAssignationsToJoints = allNumbersOfAssignations[singleAssignation.MeshNumber][singleAssignation.VertexNumber];
-                Vector3 vert = skinnedMeshRenderers[singleAssignation.MeshNumber].sharedMesh.vertices[singleAssignation.VertexNumber];
-
-                if (i > 1)
-                {
-                    Vector3 currentSegmentStart = transforms[i - 1].position;
-                    Vector3 oldCurrentSegmentStart = OriginalPositionsOfJoints[i - 1];
-                    
-                    Vector3 segmentVector = currentSegmentStart - currentJointPosition;
-                    Vector3 segmentNormalized = Vector3.Normalize(segmentVector);
-
-                    Vector3 oldSegmentVector = oldCurrentSegmentStart - OriginalPositionsOfJoints[i];
-                    Vector3 oldSegmentNormalized = Vector3.Normalize(oldSegmentVector);
-
-                    Vector3 previousSegmentStart = transforms[i - 2].position;
-                    Vector3 oldPreviousSegmentStart = OriginalPositionsOfJoints[i - 2];
-
-                    Vector3 previousSegmentVector = previousSegmentStart - currentSegmentStart;
-                    Vector3 previousSegmentNormalized = Vector3.Normalize(previousSegmentVector);
-
-                    Vector3 oldPreviousSegmentVector = oldPreviousSegmentStart - oldCurrentSegmentStart ;
-                    Vector3 oldPreviousSegmentNormalized = Vector3.Normalize(oldPreviousSegmentVector);
-
-                    Quaternion angleBetweenSegmentsCurrent = Quaternion.FromToRotation(previousSegmentNormalized, segmentNormalized);
-                    Quaternion oldAngleBetweenSegments = Quaternion.FromToRotation(oldPreviousSegmentNormalized, oldSegmentNormalized);
-
-                    Quaternion difference = Quaternion.Inverse(oldAngleBetweenSegments) * angleBetweenSegmentsCurrent;
-
-                    Matrix4x4 rotation = Matrix4x4.Rotate(difference);
-                    Vector3 newPt = rotation.MultiplyPoint3x4(vert - currentSegmentStart) + currentSegmentStart;
-                    meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber] += (newPt - vert);
-                }
-                else if (i > 0)
-                {
-                    Vector3 currentSegmentStart = transforms[i - 1].position;
-                    Vector3 oldCurrentSegmentStart = OriginalPositionsOfJoints[i - 1];
-
-                    Vector3 segmentVector = -currentSegmentStart + currentJointPosition;
-                    Vector3 segmentNormalized = Vector3.Normalize(segmentVector);
-
-                    Vector3 oldSegmentVector = -oldCurrentSegmentStart + OriginalPositionsOfJoints[i];
-                    Vector3 oldSegmentNormalized = Vector3.Normalize(oldSegmentVector);
-
-                    Quaternion difference = Quaternion.FromToRotation(oldSegmentNormalized, segmentNormalized);
-
-                    Matrix4x4 rotation = Matrix4x4.Rotate(difference);
-
-                    Vector3 newPt = rotation.MultiplyPoint3x4(vert - currentSegmentStart) + currentSegmentStart;
-
-                    meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber] += (newPt - vert);
-                }
+                currentPositions[j] = rotation.MultiplyPoint3x4(currentPositions[j] - currentSegmentStart) + currentSegmentStart;
             }
         }
 
@@ -511,7 +387,7 @@ public unsafe class InverseKinematics : MonoBehaviour
             for(int j=0; j < numberOfVertsInMeshes[i]; j++)
             {
                 positionsBeforeChange[i][j] = clonedVertices[j];
-                clonedVertices[j] += meshChanges[i][j];
+                clonedVertices[j] = meshChanges[i][j];
             }
             clone.vertices = clonedVertices;
             clones.Add(clone);
