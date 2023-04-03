@@ -270,7 +270,7 @@ public unsafe class InverseKinematics : MonoBehaviour
                 jointPositionsDifference[i] = transforms[i].position - OriginalPositionsOfJoints[i];
             }
 
-            List<Vector3[]> meshChanges = CalculateMeshChanges(jointPositionsDifference);
+            List<Vector3[]> meshChanges = CalculateMeshChanges2(jointPositionsDifference);
             ApplyMeshChanges(meshChanges);
         }
     }
@@ -352,18 +352,69 @@ public unsafe class InverseKinematics : MonoBehaviour
 
                 Vector3 vert = skinnedMeshRenderers[singleAssignation.MeshNumber].sharedMesh.vertices[singleAssignation.VertexNumber];
 
-                var x = Vector3.Magnitude(vert - OriginalPositionsOfJoints[i]);
-                var y = vert - OriginalPositionsOfJoints[i] - singleJointChange;
-                var z = Vector3.Magnitude(vert - OriginalPositionsOfJoints[i] - singleJointChange);
+                var x = Vector3.Magnitude(OriginalPositionsOfJoints[i] - vert);
+                var y = (OriginalPositionsOfJoints[i] + singleJointChange) - vert;
+                var z = Vector3.Magnitude(y);
 
-                var wu = (z - x) * (-y);
+                var wu = (x - z) * -y;
                 
 
-                //float percentage = 1f / (float)numberOfAssignationsToJoints;
-                float percentage = 1f;
+                float percentage = 1f / (float)numberOfAssignationsToJoints;
                 Vector3 verticeChange = singleJointChange * percentage;
                 //meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber] += verticeChange;
-                meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber] += wu;
+                meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber] += singleJointChange * (z-x);
+            }
+        }
+
+        return meshChanges;
+    }
+
+    private List<Vector3[]> CalculateMeshChanges2(Vector3[] jointChanges)
+    {
+        List<Vector3[]> meshChanges = new List<Vector3[]>();
+        for (int i = 0; i < numberOfMeshes; i++)
+        {
+            meshChanges.Add(new Vector3[numberOfVertsInMeshes[i]]);
+        }
+
+        for (int i = transforms.Count()-1; i >= 0; i--)
+        {
+            List<Assignation> assignationsToJoint = allAsignations[i];
+            int numberOfAssignations = assignationsToJoint.Count();
+
+            Vector3 currentJointPosition = transforms[i].position;
+
+            Vector3 singleJointChange = jointChanges[i];
+
+            for (int j = 0; j < numberOfAssignations; j++)
+            {
+                Assignation singleAssignation = assignationsToJoint[j];
+                int numberOfAssignationsToJoints = allNumbersOfAssignations[singleAssignation.MeshNumber][singleAssignation.VertexNumber];
+                Vector3 vert = skinnedMeshRenderers[singleAssignation.MeshNumber].sharedMesh.vertices[singleAssignation.VertexNumber];
+                Vector3 closestSegmentEndPosition;
+                Vector3 oldClosestSegmentEnd;
+                Vector3 previousSegmentTransform = Vector3.zero;
+
+                if (i < transforms.Count()-1)
+                {
+                    closestSegmentEndPosition = transforms[i + 1].position;
+                    oldClosestSegmentEnd = OriginalPositionsOfJoints[i + 1];
+                    previousSegmentTransform = transforms[i + 1].position - OriginalPositionsOfJoints[i + 1];
+                    Vector3 segmentVector = closestSegmentEndPosition - currentJointPosition;
+                    Vector3 segmentNormalized = Vector3.Normalize(segmentVector);
+                    Vector3 oldSegmentVector = oldClosestSegmentEnd - (currentJointPosition - singleJointChange);
+                    Vector3 oldSegmentNormalized = Vector3.Normalize(oldSegmentVector);
+                    Matrix4x4 rotation = Matrix4x4.Rotate(Quaternion.FromToRotation(oldSegmentNormalized, segmentNormalized));
+                    Vector3 newPt = rotation.MultiplyPoint3x4(vert);
+
+                    meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber] += (newPt - vert) + previousSegmentTransform;
+                }
+                else
+                {
+                    //meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber] += singleJointChange;
+                }
+
+                
             }
         }
 
@@ -397,6 +448,34 @@ public unsafe class InverseKinematics : MonoBehaviour
         }
 
         return positionsBeforeChange;
+    }
+
+    public static float DistanceToSegment(Vector2 point, Vector2 start, Vector2 end)
+    {
+        // Calculate the direction vector of the segment.
+        Vector2 segmentDirection = end - start;
+
+        // Calculate the distance between the start point and the given point.
+        Vector2 pointDirection = point - start;
+
+        // Calculate the projection of the point direction onto the segment direction.
+        float projection = Vector2.Dot(pointDirection, segmentDirection) / segmentDirection.sqrMagnitude;
+
+        // If the projection is less than zero, the closest point is the start point.
+        if (projection < 0f)
+        {
+            return Vector2.Distance(point, start);
+        }
+
+        // If the projection is greater than one, the closest point is the end point.
+        if (projection > 1f)
+        {
+            return Vector2.Distance(point, end);
+        }
+
+        // Otherwise, the closest point is on the segment between the start and end points.
+        Vector2 closestPoint = start + projection * segmentDirection;
+        return Vector2.Distance(point, closestPoint);
     }
 
     internal class Assignation
