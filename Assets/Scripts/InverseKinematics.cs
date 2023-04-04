@@ -121,14 +121,14 @@ public unsafe class InverseKinematics : MonoBehaviour
     void PoleConstraint()
     {
         int numberOfJoints = transforms.Length + 1;
-        if (poleTarget != null && numberOfJoints < 4)
+        if (poleTarget != null && numberOfJoints < 5)
         {
             // Get the limb axis direction
-            var limbAxis = (jointPositions[2] - jointPositions[0]).normalized;
+            var limbAxis = (jointPositions[3] - jointPositions[1]).normalized;
 
             // Get the direction from the root joint to the pole target and mid joint
-            Vector3 poleDirection = (poleTarget.position - jointPositions[0]).normalized;
-            Vector3 boneDirection = (jointPositions[1] - jointPositions[0]).normalized;
+            Vector3 poleDirection = (poleTarget.position - jointPositions[1]).normalized;
+            Vector3 boneDirection = (jointPositions[2] - jointPositions[1]).normalized;
 
             // Ortho-normalize the vectors
             Vector3.OrthoNormalize(ref limbAxis, ref poleDirection);
@@ -138,7 +138,7 @@ public unsafe class InverseKinematics : MonoBehaviour
             Quaternion angle = Quaternion.FromToRotation(boneDirection, poleDirection);
 
             // Rotate the middle bone using the angle
-            jointPositions[1] = angle * (jointPositions[1] - jointPositions[0]) + jointPositions[0];
+            jointPositions[2] = angle * (jointPositions[2] - jointPositions[1]) + jointPositions[1];
         }
     }
 
