@@ -82,14 +82,13 @@ public unsafe class InverseKinematics : MonoBehaviour
         {
             numberOfVertsInMeshes[i] = skinnedMeshRenderers[i].sharedMesh.vertices.Count();
         }
+        
+        AssignMeshVertices();
 
-        /*
         int sizeOfStruct = sizeof(SimpleTriangle);
         trianglesBuffer = new ComputeBuffer(numberOfAllTriangles / 3, sizeOfStruct, ComputeBufferType.Structured);
         startingVerticsPositionsBuffer = new ComputeBuffer(numberOfAllVertices, sizeof(Vector3), ComputeBufferType.Structured);
         finishVerticesPositionBuffer = new ComputeBuffer(numberOfAllVertices, sizeof(Vector3), ComputeBufferType.Structured);
-        */
-        AssignMeshVertices();
 
         var current = transform;
 
@@ -271,7 +270,8 @@ public unsafe class InverseKinematics : MonoBehaviour
             }
 
             List<Vector3[]> meshChanges = CalculateMeshChanges(jointPositionsDifference);
-            ApplyMeshChanges(meshChanges);
+            var positionsBeforeChange = ApplyMeshChanges(meshChanges);
+            SetBufferData(positionsBeforeChange);
         }
     }
 
@@ -427,6 +427,45 @@ public unsafe class InverseKinematics : MonoBehaviour
         // Otherwise, the closest point is on the segment between the start and end points.
         Vector2 closestPoint = start + projection * segmentDirection;
         return Vector2.Distance(point, closestPoint);
+    }
+
+    private void SetBufferData(List<Vector3[]> positionsBeforeChange)
+    {
+        Vector3[] VerticesBeforeChange = new Vector3[numberOfAllVertices];
+        Vector3[] VerticesAfterChange = new Vector3[numberOfAllVertices];
+        SimpleTriangle[] listOfAllTriangles = new SimpleTriangle[numberOfAllTriangles / 3];
+        int verticeIndexTracker = 0;
+        int triangleIndexTracker = 0;
+        //offset will be aded because, vertices are being merged into one array so the triangle vertice indexes will 
+        //need offset starting from second mesh
+        int triangleVectorPositionOffset = 0;
+        for(int j=0; j<skinnedMeshRenderers.Count(); j++)
+        {
+            for(int k=0; k < skinnedMeshRenderers[j].sharedMesh.vertices.Count(); k++)
+            {
+                var positionBeforeCHange = positionsBeforeChange[j][k];
+                var positionAfterChange = skinnedMeshRenderers[j].sharedMesh.vertices[k];
+                VerticesBeforeChange[verticeIndexTracker] = positionBeforeCHange;
+                VerticesAfterChange[verticeIndexTracker] = positionAfterChange;
+                verticeIndexTracker++;
+            }
+
+            for (int k = 0; k < skinnedMeshes[j].sharedMesh.triangles.Count(); k += 3)
+            {
+                SimpleTriangle triangle = new SimpleTriangle();
+                triangle.t1 = skinnedMeshes[j].sharedMesh.triangles[k] + triangleVectorPositionOffset;
+                triangle.t2 = skinnedMeshes[j].sharedMesh.triangles[k + 1] + triangleVectorPositionOffset;
+                triangle.t3 = skinnedMeshes[j].sharedMesh.triangles[k + 2] + triangleVectorPositionOffset;
+                listOfAllTriangles[triangleIndexTracker] = triangle;
+                triangleIndexTracker++;
+                
+            }
+            triangleVectorPositionOffset += skinnedMeshes[j].sharedMesh.vertices.Count();
+        }
+
+        trianglesBuffer.SetData(listOfAllTriangles);
+        startingVerticsPositionsBuffer.SetData(VerticesBeforeChange);
+        finishVerticesPositionBuffer.SetData(VerticesAfterChange);
     }
 
     internal class Assignation
