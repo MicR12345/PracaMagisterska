@@ -1,0 +1,130 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel DynamicCollision
+struct Connectors
+{
+    float connectionL[24];
+    int number[24];
+};
+struct SimplePointStr
+{
+    float3 position;
+    float mass;
+    int connectorCount;
+    int ignorePhysics;
+    float3 movePosition;
+    float3 velocity;
+    Connectors connectorPositions;
+};
+struct SimpleTriangle
+{
+    int t1;
+    int t2;
+    int t3;
+};
+struct BoundingBox
+{
+    float3 maxP;
+    float3 minP;
+};
+BoundingBox CalculateBoundingBoxTriangle(float3 t1, float3 t2, float3 t3)
+{
+    float maxX = max(t1.x, t2.x);
+    maxX = max(maxX, t3.x);
+    float maxY = max(t1.y, t2.y);
+    maxY = max(maxY, t3.y);
+    float maxZ = max(t1.z, t2.z);
+    maxZ = max(maxZ, t3.z);
+    float minX = min(t1.x, t2.x);
+    minX = min(minX, t3.x);
+    float minY = min(t1.y, t2.y);
+    minY = min(minY, t3.y);
+    float minZ = min(t1.z, t2.z);
+    minZ = min(minZ, t3.z);
+    BoundingBox bb;
+    bb.maxP = float3(maxX, maxY, maxZ);
+    bb.minP = float3(minX, minY, minZ);
+    return bb;
+}
+bool CheckIfInBoundingBox(float3 origin, float3 end, float3 t0, float3 t1, float3 t2)
+{
+    BoundingBox bb;
+    bb = CalculateBoundingBoxTriangle(t0, t1, t2);
+    if (origin.x < bb.minP.x && end.x > bb.minP.x
+                || end.x < bb.minP.x && origin.x > bb.minP.x
+                || origin.x > bb.maxP.x && end.x < bb.maxP.x
+                || end.x > bb.maxP.x && origin.x < bb.maxP.x
+                || origin.x >= bb.minP.x && origin.x <= bb.maxP.x
+                || end.x >= bb.minP.x && end.x <= bb.maxP.x)
+    {
+        if (origin.y < bb.minP.y && end.y > bb.minP.y
+                    || end.y < bb.minP.y && origin.y > bb.minP.y
+                    || origin.y > bb.maxP.y && end.y < bb.maxP.y
+                    || end.y > bb.maxP.y && origin.y < bb.maxP.y
+                    || origin.y >= bb.minP.y && origin.y <= bb.maxP.y
+                    || end.y >= bb.minP.y && end.y <= bb.maxP.y)
+        {
+            if (origin.z < bb.minP.z && end.z > bb.minP.z
+                        || end.z < bb.minP.z && origin.z > bb.minP.z
+                        || origin.z > bb.maxP.z && end.z < bb.maxP.z
+                        || end.z > bb.maxP.z && origin.z < bb.maxP.z
+                        || origin.z >= bb.minP.z && origin.z <= bb.maxP.z
+                        || end.z >= bb.minP.z && end.z <= bb.maxP.z)
+            {
+                return true;
+
+            }
+        }
+    }
+    return false;
+}
+float RayTriangleDistance(float3 origin, float3 direction, float3 triVert1, float3 triVert2, float3 triVert3, out float3 CollisionVector)
+{
+
+    float3 edge1 = triVert2 - triVert1;
+    float3 edge2 = triVert3 - triVert1;
+    float3 h = cross(direction, edge2);
+
+    float a = dot(edge1, h);
+    if (a > -0.00001f && a < 0.00001f)
+    {
+        return -1.0f;
+    }
+    float f = 1.0f / a;
+
+    float3 s = origin - triVert1;
+    float u = f * dot(s, h);
+    if (u < 0 || u > 1.0f)
+    {
+        return -1.0f;
+    }
+    float3 q = cross(s, edge1);
+    float v = f * dot(direction, q);
+    if (v < 0 || u + v > 1.0f)
+    {
+        return -1.0f;
+    }
+    float t = f * dot(edge2, q);
+    if (t > 0.00001f)
+    {
+        CollisionVector = normalize(cross(edge1, edge2));
+        return t;
+    }
+    else
+    {
+        return -1.0f;
+    }
+    return -1.0f;
+}
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+float Time;
+RWStructuredBuffer<SimplePointStr> SimplePoints;
+RWStructuredBuffer<SimpleTriangle> triangles;
+RWStructuredBuffer<float3> startPoints;
+RWStructuredBuffer<float3> endPoints;
+
+[numthreads(128,1,1)]
+void DynamicCollision(uint3 id : SV_DispatchThreadID)
+{
+    SimplePointStr sp = SimplePoints[id.x];
+}

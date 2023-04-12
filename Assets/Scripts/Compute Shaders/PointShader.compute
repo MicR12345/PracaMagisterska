@@ -20,6 +20,7 @@ float k;
 float friction;
 RWStructuredBuffer<SimplePointStr> SimplePoints;
 RWStructuredBuffer<SimplePointStr> SimplePointsOut;
+RWStructuredBuffer<float3> internalCollisions;
 [numthreads(128,1,1)]
 void PointKernel32 (uint3 id : SV_DispatchThreadID)
 {
@@ -39,6 +40,8 @@ void PointKernel32 (uint3 id : SV_DispatchThreadID)
             sp.velocity = sp.velocity + (normalize(direction) * k * (sp.connectorPositions.connectionL[i] - dist) * Time);
         }
         sp.velocity = sp.velocity * (1 - friction);
+        sp.velocity = sp.velocity + internalCollisions[id.x];
+        internalCollisions[id.x] = float3(0, 0, 0);
         //sp.position = float3(sp.position.x + sp.velocity.x, sp.position.y + sp.velocity.y, sp.position.z + sp.velocity.z);
         SimplePointsOut[id.x] = sp;
     }

@@ -17,9 +17,15 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     ComputeBuffer pointBuffer;
     ComputeBuffer pointBufferOut;
     ComputeBuffer triangleBuffer;
+
+    ComputeBuffer internalCollisionVelocitiesBuffer;
+
     ComputeBuffer debugBuffer;
     ComputeBuffer debugBuffer2;
     ComputeBuffer externalTrianglesBuffer;
+
+    public List<InverseKinematics> IKs = new List<InverseKinematics>();
+
     Vector3[] debug;
     Vector3[] debug2;
     TriVert[] externalTriangles;
@@ -39,6 +45,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     public ComputeShader forceComputeShader;
     public ComputeShader collisionComputeShader;
     public ComputeShader externalCollisionShader;
+    public ComputeShader dynamicCollisionShader;
     public List<Anchor> anchors = new List<Anchor>();
     public List<MeshFilter> externalObjects = new List<MeshFilter> ();
     private void OnEnable()
@@ -117,11 +124,14 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         debugBuffer = new ComputeBuffer(pointCount,sizeof(Vector3), ComputeBufferType.Structured);
         debugBuffer2 = new ComputeBuffer(pointCount, sizeof(Vector3), ComputeBufferType.Structured);
         externalTrianglesBuffer = new ComputeBuffer(Mathf.Max(externalTriangles.Length,1),sizeof(TriVert),ComputeBufferType.Structured);
+        internalCollisionVelocitiesBuffer = new ComputeBuffer(pointCount, sizeof(Vector3), ComputeBufferType.Structured);
         forceComputeShader.SetBuffer(0, "SimplePoints", pointBuffer);
         forceComputeShader.SetBuffer(0, "SimplePointsOut", pointBufferOut);
+        forceComputeShader.SetBuffer(0, "internalCollisions", internalCollisionVelocitiesBuffer);
 
         collisionComputeShader.SetBuffer(0, "SimplePoints", pointBufferOut);
         collisionComputeShader.SetBuffer(0, "SimplePointsOut", pointBuffer);
+        collisionComputeShader.SetBuffer(0, "internalCollisions", internalCollisionVelocitiesBuffer);
         collisionComputeShader.SetBuffer(0, "Triangles", triangleBuffer);
         collisionComputeShader.SetInt("TriangleCount", triangles.Length);
         collisionComputeShader.SetBuffer(0, "Debug", debugBuffer);
@@ -132,9 +142,13 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         externalCollisionShader.SetBuffer(0, "ExternalTriangles", externalTrianglesBuffer);
         externalCollisionShader.SetInt("ExtTriangleCount", externalTriangles.Length);
         externalTrianglesBuffer.SetData(externalTriangles);
+
+        dynamicCollisionShader.SetBuffer(0, "SimplePoints", pointBufferOut);
+
         triangleBuffer.SetData(triangleData);
         pointBuffer.SetData(pointData);
         Vector3[] velocities = new Vector3[pointCount];
+        internalCollisionVelocitiesBuffer.SetData(velocities);
         debug = new Vector3[pointCount];
         debug2 = new Vector3[pointCount];
         
@@ -154,6 +168,9 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         debugBuffer2 = null;
         externalTrianglesBuffer.Release();
         externalTriangles = null;
+        internalCollisionVelocitiesBuffer.Release();
+        internalCollisionVelocitiesBuffer = null;
+
     }
     private void FixedUpdate()
     {
@@ -174,6 +191,13 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
             forceComputeShader.Dispatch(0, (pointCount / 128) + 1, 1, 1);
             collisionComputeShader.Dispatch(0, (pointCount / 128) + 1, 1, 1);
             externalCollisionShader.Dispatch(0, (pointCount / 128) + 1, 1, 1);
+            foreach (InverseKinematics ik in IKs)
+            {
+                dynamicCollisionShader.SetBuffer(0, "triangles", ik.trianglesBuffer);
+                dynamicCollisionShader.SetBuffer(0, "startPoints", ik.startingVerticsPositionsBuffer);
+                dynamicCollisionShader.SetBuffer(0, "endPoints", ik.finishVerticesPositionBuffer);
+                dynamicCollisionShader.Dispatch(0, (ik.numberOfAllTriangles / 128) + 1, 1, 1);
+            }
             pointBufferOut.GetData(pointData);
             CreateNewMesh();
         }
