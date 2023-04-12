@@ -175,7 +175,7 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
             }
         }
     }
-    sp.position = sp.position + sp.velocity; // * Time;
+    //sp.position = sp.position + sp.velocity; // * Time;
     SimplePointsOut[id.x] = sp;
 
 }

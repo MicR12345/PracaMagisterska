@@ -48,7 +48,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     public ComputeShader dynamicCollisionShader;
 
     public List<Anchor> anchors = new List<Anchor>();
-    public List<MeshFilter> externalObjects = new List<MeshFilter> ();
+    public List<SkinnedMeshRenderer> externalObjects = new List<SkinnedMeshRenderer> ();
     private void OnEnable()
     {
         externalTrianglesFull = new List<TriVert>();
@@ -59,16 +59,12 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         }
         if (meshFilterFlag)
         {
-            mesh = meshFilter.sharedMesh;
+            mesh = Instantiate(meshFilter.sharedMesh);
         }
         else
         {
-            mesh = skinnedMeshRenderer.sharedMesh;
+            mesh = Instantiate(skinnedMeshRenderer.sharedMesh);
         }
-        Mesh meshCloned;
-        meshCloned = Instantiate(mesh);
-        meshCloned.name = "clone";
-        mesh = meshCloned;
         vertices = mesh.vertices;
         triangles = mesh.triangles;
         CalculatePoints();
@@ -195,7 +191,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
                 dynamicCollisionShader.SetBuffer(0, "startPoints", ik.startingVerticsPositionsBuffer);
                 dynamicCollisionShader.SetBuffer(0, "endPoints", ik.finishVerticesPositionBuffer);
                 dynamicCollisionShader.SetInt("TCount",ik.numberOfAllTriangles / 3);
-                dynamicCollisionShader.Dispatch(0, (ik.numberOfAllTriangles / 128) + 1, 1, 1);
+                dynamicCollisionShader.Dispatch(0, (pointCount / 128) + 1, 1, 1);
             }
             pointBufferOut.GetData(pointData);
             CreateNewMesh();
@@ -217,7 +213,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     }*/
     public void CreateNewMesh()
     {
-        Mesh meshNew = new Mesh();
+        Mesh meshNew = Instantiate(mesh);
         int l = vertices.Length;
         Vector3[] newPoints = new Vector3[l];
         for (int i = 0; i < l; i++)
@@ -226,9 +222,6 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         }
         meshNew.vertices = newPoints;
         vertices = newPoints;
-        meshNew.triangles = mesh.triangles;
-        meshNew.uv = mesh.uv;
-        meshNew.normals = mesh.normals;
         if (meshFilterFlag)
         {
             meshFilter.sharedMesh = meshNew;
@@ -410,11 +403,11 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     void RegisterExternalTriangles()
     {
         
-        foreach (MeshFilter item in externalObjects)
+        foreach (SkinnedMeshRenderer item in externalObjects)
         {
             Vector3 dp = item.gameObject.transform.position;
-            Vector3[] verts = item.mesh.vertices;
-            int[] triangles = item.mesh.triangles;
+            Vector3[] verts = item.sharedMesh.vertices;
+            int[] triangles = item.sharedMesh.triangles;
             for (int i = 0; i < triangles.Length; i = i + 3)
             {
                 TriVert triVert = new TriVert();
