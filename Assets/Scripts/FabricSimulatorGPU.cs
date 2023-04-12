@@ -46,6 +46,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     public ComputeShader collisionComputeShader;
     public ComputeShader externalCollisionShader;
     public ComputeShader dynamicCollisionShader;
+
     public List<Anchor> anchors = new List<Anchor>();
     public List<MeshFilter> externalObjects = new List<MeshFilter> ();
     private void OnEnable()
@@ -65,12 +66,8 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
             mesh = skinnedMeshRenderer.sharedMesh;
         }
         Mesh meshCloned;
-        meshCloned = new Mesh();
+        meshCloned = Instantiate(mesh);
         meshCloned.name = "clone";
-        meshCloned.vertices = mesh.vertices;
-        meshCloned.triangles = mesh.triangles;
-        meshCloned.normals = mesh.normals;
-        meshCloned.uv = mesh.uv;
         mesh = meshCloned;
         vertices = mesh.vertices;
         triangles = mesh.triangles;
@@ -144,6 +141,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         externalTrianglesBuffer.SetData(externalTriangles);
 
         dynamicCollisionShader.SetBuffer(0, "SimplePoints", pointBufferOut);
+        dynamicCollisionShader.SetBuffer(0, "SimplePointsOut", pointBuffer);
 
         triangleBuffer.SetData(triangleData);
         pointBuffer.SetData(pointData);
@@ -196,6 +194,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
                 dynamicCollisionShader.SetBuffer(0, "triangles", ik.trianglesBuffer);
                 dynamicCollisionShader.SetBuffer(0, "startPoints", ik.startingVerticsPositionsBuffer);
                 dynamicCollisionShader.SetBuffer(0, "endPoints", ik.finishVerticesPositionBuffer);
+                dynamicCollisionShader.SetInt("TCount",ik.numberOfAllTriangles / 3);
                 dynamicCollisionShader.Dispatch(0, (ik.numberOfAllTriangles / 128) + 1, 1, 1);
             }
             pointBufferOut.GetData(pointData);

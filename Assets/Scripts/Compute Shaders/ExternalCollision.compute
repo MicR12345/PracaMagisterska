@@ -80,7 +80,10 @@ bool CheckIfInBoundingBox(float3 origin,float3 end,float3 t0, float3 t1, float3 
 }
 float RayTriangleDistance(float3 origin, float3 direction, float3 triVert1, float3 triVert2, float3 triVert3, out float3 CollisionVector)
 {
-
+    if (direction.x == 0 && direction.y == 0 && direction.z == 0)
+    {
+        return -1.0f;
+    }
     float3 edge1 = triVert2 - triVert1;
     float3 edge2 = triVert3 - triVert1;
     float3 h = cross(direction, edge2);

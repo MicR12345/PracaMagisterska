@@ -79,7 +79,10 @@ bool CheckIfInBoundingBox(float3 origin, float3 end, float3 t0, float3 t1, float
 }
 float RayTriangleDistance(float3 origin, float3 direction, float3 triVert1, float3 triVert2, float3 triVert3, out float3 CollisionVector)
 {
-
+    if (direction.x == 0 && direction.y == 0 && direction.z == 0)
+    {
+        return -1.0f;
+    }
     float3 edge1 = triVert2 - triVert1;
     float3 edge2 = triVert3 - triVert1;
     float3 h = cross(direction, edge2);
@@ -118,7 +121,9 @@ float RayTriangleDistance(float3 origin, float3 direction, float3 triVert1, floa
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 float Time;
+int TCount;
 RWStructuredBuffer<SimplePointStr> SimplePoints;
+RWStructuredBuffer<SimplePointStr> SimplePointsOut;
 RWStructuredBuffer<SimpleTriangle> triangles;
 RWStructuredBuffer<float3> startPoints;
 RWStructuredBuffer<float3> endPoints;
@@ -127,4 +132,52 @@ RWStructuredBuffer<float3> endPoints;
 void DynamicCollision(uint3 id : SV_DispatchThreadID)
 {
     SimplePointStr sp = SimplePoints[id.x];
+
+    if (abs(sp.velocity.x) + abs(sp.velocity.y) + abs(sp.velocity.z) > 0.01f || true)
+    {
+        float3 origin = sp.position;
+        float3 end = sp.position + normalize(sp.velocity);
+        for (int j = 0; j < TCount; j++)
+        {
+            float3 t0 = endPoints[triangles[j].t1];
+            float3 t1 = endPoints[triangles[j].t2];
+            float3 t2 = endPoints[triangles[j].t3];
+            if (CheckIfInBoundingBox(origin, sp.position + normalize(sp.velocity), t0, t1, t2))
+            {
+                float3 collisionVector;
+                float dt = RayTriangleDistance(origin, normalize(sp.velocity), t0, t1, t2, collisionVector);
+                if (dt >= 0)
+                {
+                    if (dt <= 3 * length(sp.velocity))
+                    {
+                        sp.velocity = sp.velocity - (normalize(collisionVector) * 1.1f * length(sp.velocity));
+
+                    }
+                }
+            }
+            for (int k = 0; k < sp.connectorCount && k < 24; k++)
+            {
+                float3 end = sp.position + sp.velocity;
+                int n = sp.connectorPositions.number[k];
+                SimplePointStr connection = SimplePoints[n];
+                if (CheckIfInBoundingBox(end, connection.position, t0, t1, t2))
+                {
+                    float3 collisionVector2;
+                    float dt2 = RayTriangleDistance(origin, normalize((connection.position) + (connection.velocity) - origin), t0, t1, t2, collisionVector2);
+                    float3 collisionVector;
+                    float dt = RayTriangleDistance(end, normalize((connection.position) + (connection.velocity) - end), t0, t1, t2, collisionVector);
+                    if (dt >= 0 && dt2 < 0)
+                    {
+                        if (dt <= length((connection.position) + (connection.velocity) - end))
+                            sp.velocity = float3(0, 0, 0);
+                    }
+                    else if (dt2 >= 0 && dt >= 0)
+                    {
+                    }
+                }
+            }
+        }
+    }
+    sp.position = sp.position + sp.velocity; // * Time;
+    SimplePointsOut[id.x] = sp;
 }
