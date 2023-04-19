@@ -39,7 +39,7 @@ public unsafe class InverseKinematics : MonoBehaviour
     public ComputeBuffer trianglesBuffer;
     public ComputeBuffer startingVerticsPositionsBuffer;
     public ComputeBuffer finishVerticesPositionBuffer;
-    private int numberOfAllVertices = 0;
+    public int numberOfAllVertices = 0;
     public int numberOfAllTriangles = 0;
     public List<SkinnedMeshRenderer> skinnedMeshRenderers = new List<SkinnedMeshRenderer>();
 
