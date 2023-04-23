@@ -1196,7 +1196,7 @@ MonoBehaviour:
   IKs:
   - {fileID: 309445401}
   ro: 1
-  k: 1
+  k: 0.1
   friction: 0.2
   timeScale: 1
   forceComputeShader: {fileID: 7200000, guid: 2d301b6c2c9a2944f81f94ece1ca7884, type: 3}

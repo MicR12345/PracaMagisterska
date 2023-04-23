@@ -139,7 +139,7 @@ void DynamicMovement (uint3 id : SV_DispatchThreadID)
         {
             float3 collisionVector;
             float dt = RayTriangleDistance(start, end, t0, t1, t2, collisionVector);
-            if (dt >= 0)
+            if (dt >= 0 && dt < distance(start,end))
             {
                 SimplePoints[triangles[j].t1].position = SimplePoints[triangles[j].t1].position + delta;
                 SimplePoints[triangles[j].t2].position = SimplePoints[triangles[j].t2].position + delta;
