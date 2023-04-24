@@ -152,7 +152,7 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                 samePoints++;
             if (st.t3 == st2.t1 || st.t3 == st2.t2 || st.t3 == st2.t3)
                 samePoints++;
-            if (samePoints < 2)
+            if (samePoints < 3)
             {
                 SimplePointStr sp21 = SimplePoints[st2.t1];
                 SimplePointStr sp22 = SimplePoints[st2.t2];
@@ -167,7 +167,7 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                     ))
                 {
                     float3 cv1, cv2, cv3;
-                    float dt1 = RayTriangleDistance(sp1.position, sp1.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, cv1);
+                    float dt1 = RayTriangleDistance(sp1.position, sp1.velocity, sp21.position, sp22.position, sp23.position, cv1);
                     if (dt1 > 0 && dt1 < length(sp1.velocity))
                     {
                         float3 ogV = sp1.velocity;
@@ -180,7 +180,7 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                         }
                         sp1.velocity = (collisionPoint + (cv1 * 0.1)) - sp1.position;
                     }
-                    float dt2 = RayTriangleDistance(sp2.position, sp2.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, cv2);
+                    float dt2 = RayTriangleDistance(sp2.position, sp2.velocity, sp21.position, sp22.position, sp23.position, cv2);
                     if (dt2 > 0 && dt2 < length(sp2.velocity))
                     {
                         float3 ogV = sp2.velocity;
@@ -193,7 +193,7 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                         }
                         sp2.velocity = (collisionPoint + (cv2 * 0.1)) - sp2.position;
                     }
-                    float dt3 = RayTriangleDistance(sp3.position, sp3.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, cv3);
+                    float dt3 = RayTriangleDistance(sp3.position, sp3.velocity, sp21.position, sp22.position, sp23.position, cv3);
                     if (dt3 > 0 && dt3 < length(sp3.velocity))
                     {
                         float3 ogV = sp3.velocity;
