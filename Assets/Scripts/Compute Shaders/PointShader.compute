@@ -25,7 +25,13 @@ RWStructuredBuffer<float3> internalCollisions;
 void PointKernel32 (uint3 id : SV_DispatchThreadID)
 {
     SimplePointStr sp = SimplePoints[id.x];
-    sp.position = sp.position + sp.velocity;
+    if (sp.position.y + sp.velocity.y > 0)
+        sp.position = sp.position + sp.velocity;
+    else
+    {
+        sp.position = sp.position + sp.velocity;
+        sp.position = float3(sp.position.x, 0, sp.position.z);
+    }
     if (sp.ignorePhysics ==1) {
         SimplePointsOut[id.x] = sp;
     }
@@ -37,18 +43,17 @@ void PointKernel32 (uint3 id : SV_DispatchThreadID)
             float3 pp = sp2.position;
             float dist = distance(sp.position, pp);
             float3 direction = sp.position - pp;
-            if (direction.x != 0 && direction.y != 0 && direction.z != 0)
+            if (length(direction)>0)
             {
                 float x = (dist - sp.connectorPositions.connectionL[i]);
-                sp.velocity = sp.velocity + (normalize(direction) * -k * min(x, sp.connectorPositions.connectionL[i] * 2) * Time);
+                //sp.velocity = sp.velocity + (normalize(direction) * -k * min(x, sp.connectorPositions.connectionL[i] * 2) * Time);
+                sp.velocity = sp.velocity + (normalize(direction) * -k *x * Time);
             }
             
         }
         sp.velocity = sp.velocity * (1 - friction);
         sp.velocity = sp.velocity + internalCollisions[id.x];
         internalCollisions[id.x] = float3(0, 0, 0);
-        
-        //sp.position = float3(sp.position.x + sp.velocity.x, sp.position.y + sp.velocity.y, sp.position.z + sp.velocity.z);
         SimplePointsOut[id.x] = sp;
     }
 }

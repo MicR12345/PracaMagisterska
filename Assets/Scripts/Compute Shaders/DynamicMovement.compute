@@ -82,6 +82,10 @@ float RayTriangleDistance(float3 origin, float3 direction, float3 triVert1, floa
     {
         return -1.0f;
     }
+    else
+    {
+        direction = normalize(direction);
+    }
     float3 edge1 = triVert2 - triVert1;
     float3 edge2 = triVert3 - triVert1;
     float3 h = cross(direction, edge2);
@@ -108,7 +112,7 @@ float RayTriangleDistance(float3 origin, float3 direction, float3 triVert1, floa
     float t = f * dot(edge2, q);
     if (t > 0.00001f)
     {
-        CollisionVector = normalize(cross(edge1, edge2));
+        CollisionVector = normalize(direction) * t;
         return t;
     }
     else
@@ -138,12 +142,13 @@ void DynamicMovement (uint3 id : SV_DispatchThreadID)
         if (CheckIfInBoundingBox(start, end, t0, t1, t2))
         {
             float3 collisionVector;
-            float dt = RayTriangleDistance(start, end, t0, t1, t2, collisionVector);
-            if (dt >= 0 && dt < distance(start,end))
+            float dt = RayTriangleDistance(start, delta, t0, t1, t2, collisionVector);
+            if (dt >= 0 && dt < length(delta))
             {
-                SimplePoints[triangles[j].t1].position = SimplePoints[triangles[j].t1].position + delta;
-                SimplePoints[triangles[j].t2].position = SimplePoints[triangles[j].t2].position + delta;
-                SimplePoints[triangles[j].t3].position = SimplePoints[triangles[j].t3].position + delta;
+                float3 collisionPoint = normalize(delta) * dt;
+                SimplePoints[triangles[j].t1].position = SimplePoints[triangles[j].t1].position + collisionPoint * 1.1;
+                SimplePoints[triangles[j].t2].position = SimplePoints[triangles[j].t2].position + collisionPoint * 1.1;
+                SimplePoints[triangles[j].t3].position = SimplePoints[triangles[j].t3].position + collisionPoint * 1.1;
             }
         }
     }

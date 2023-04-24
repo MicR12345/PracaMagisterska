@@ -64,11 +64,15 @@ bool CheckIfInBoundingBox(float3 t10,float3 t11, float3 t12,float3 t20, float3 t
     }
     return true;
 }
-float RayTriangleDistance(float3 origin, float3 direction, float3 triVert1, float3 triVert2, float3 triVert3,out float3 CollisionVector)
+float RayTriangleDistance(float3 origin, float3 direction, float3 triVert1, float3 triVert2, float3 triVert3, out float3 CollisionVector)
 {
     if (direction.x == 0 && direction.y == 0 && direction.z == 0)
     {
         return -1.0f;
+    }
+    else
+    {
+        direction = normalize(direction);
     }
     float3 edge1 = triVert2 - triVert1;
     float3 edge2 = triVert3 - triVert1;
@@ -82,7 +86,7 @@ float RayTriangleDistance(float3 origin, float3 direction, float3 triVert1, floa
     float f = 1.0f / a;
 
     float3 s = origin - triVert1;
-    float u = f * dot(s,h);
+    float u = f * dot(s, h);
     if (u < 0 || u > 1.0f)
     {
         return -1.0f;
@@ -96,7 +100,7 @@ float RayTriangleDistance(float3 origin, float3 direction, float3 triVert1, floa
     float t = f * dot(edge2, q);
     if (t > 0.00001f)
     {
-        CollisionVector = normalize(cross(edge1, edge2)) * t;
+        CollisionVector = normalize(direction) * t;
         return t;
     }
     else
@@ -104,6 +108,22 @@ float RayTriangleDistance(float3 origin, float3 direction, float3 triVert1, floa
         return -1.0f;
     }
     return -1.0f;
+}
+void ResolveIndirectCollision(float3 pos1, float3 pos2, float3 vel2, float3 tri1, float3 tri2, float3 tri3, out float3 newV)
+{
+    float3 collisionVector;
+    int i = 0;
+    float dt = RayTriangleDistance(pos1, pos2 + vel2 - pos1, tri1, tri2, tri3, collisionVector);
+    while (dt > 0 && dt < length(pos2 + vel2 - pos1) && i < 3)
+    {
+        float3 collisionPoint = pos1 + normalize(pos2 + vel2 - pos1) * dt;
+        vel2 = vel2 * 0.5;
+        dt = RayTriangleDistance(pos1, pos2 + vel2 - pos1, tri1, tri2, tri3, collisionVector);
+        i++;
+        //vel2 = float3(0, 0, 0);
+    }
+    newV = vel2;
+    //newV = float3(0, 0, 0);
 }
 // Create a RenderTexture with enableRandomWrite flag and set it
 int TriangleCount;
@@ -132,7 +152,7 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                 samePoints++;
             if (st.t3 == st2.t1 || st.t3 == st2.t2 || st.t3 == st2.t3)
                 samePoints++;
-            if (samePoints < 1)
+            if (samePoints < 2)
             {
                 SimplePointStr sp21 = SimplePoints[st2.t1];
                 SimplePointStr sp22 = SimplePoints[st2.t2];
@@ -147,10 +167,7 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                     ))
                 {
                     float3 cv1, cv2, cv3;
-                    float dt1 = RayTriangleDistance(sp1.position, sp1.velocity, sp21.position, sp22.position, sp23.position, cv1);
-                    float dt2 = RayTriangleDistance(sp2.position, sp2.velocity, sp21.position, sp22.position, sp23.position, cv2);
-                    float dt3 = RayTriangleDistance(sp3.position, sp3.velocity, sp21.position, sp22.position, sp23.position, cv3);
-                    
+                    float dt1 = RayTriangleDistance(sp1.position, sp1.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, cv1);
                     if (dt1 > 0 && dt1 < length(sp1.velocity))
                     {
                         float3 ogV = sp1.velocity;
@@ -163,6 +180,7 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                         }
                         sp1.velocity = (collisionPoint + (cv1 * 0.1)) - sp1.position;
                     }
+                    float dt2 = RayTriangleDistance(sp2.position, sp2.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, cv2);
                     if (dt2 > 0 && dt2 < length(sp2.velocity))
                     {
                         float3 ogV = sp2.velocity;
@@ -175,6 +193,7 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                         }
                         sp2.velocity = (collisionPoint + (cv2 * 0.1)) - sp2.position;
                     }
+                    float dt3 = RayTriangleDistance(sp3.position, sp3.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, cv3);
                     if (dt3 > 0 && dt3 < length(sp3.velocity))
                     {
                         float3 ogV = sp3.velocity;
@@ -187,49 +206,12 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                         }
                         sp3.velocity = (collisionPoint + (cv3 * 0.1)) - sp3.position;
                     }
-                    dt1 = RayTriangleDistance(sp1.position, sp2.position + sp2.velocity - sp1.position, sp21.position, sp22.position, sp23.position, cv1);
-                    dt2 = RayTriangleDistance(sp2.position, sp3.position + sp3.velocity - sp2.position, sp21.position, sp22.position, sp23.position, cv2);
-                    dt3 = RayTriangleDistance(sp3.position, sp1.position + sp1.velocity - sp3.position, sp21.position, sp22.position, sp23.position, cv3);
-                    if (dt1 > 0 && dt1 < length(sp2.position + sp2.velocity - sp1.position))
-                    {
-                        float3 collisionPoint = sp1.position + normalize(sp2.position + sp2.velocity - sp1.position) * dt1;
-                        sp2.velocity = (sp1.position + (collisionPoint - sp1.position) * 0.1) - sp2.position;
-                        //sp2.velocity = float3(0, 0, 0);
-                    }
-                    if (dt2 > 0 && dt2 < length(sp3.position + sp3.velocity - sp2.position))
-                    {
-                        float3 collisionPoint = sp2.position + normalize(sp3.position + sp3.velocity - sp2.position) * dt2;
-                        sp3.velocity = (sp2.position + (collisionPoint - sp2.position) * 0.1) - sp3.position;
-                        //sp3.velocity = float3(0, 0, 0);
-                    }
-                    if (dt3 > 0 && dt3 < length(sp1.position + sp1.velocity - sp3.position))
-                    {
-                        float3 collisionPoint = sp3.position + normalize(sp1.position + sp1.velocity - sp3.position) * dt3;
-                        sp1.velocity = (sp3.position + (collisionPoint - sp3.position) * 0.1) - sp1.position;
-                        //sp1.velocity = float3(0, 0, 0);
-                    }
-                    dt1 = RayTriangleDistance(sp2.position, sp1.position + sp1.velocity - sp2.position, sp21.position, sp22.position, sp23.position, cv1);
-                    dt2 = RayTriangleDistance(sp3.position, sp2.position + sp2.velocity - sp3.position, sp21.position, sp22.position, sp23.position, cv2);
-                    dt3 = RayTriangleDistance(sp1.position, sp3.position + sp3.velocity - sp1.position, sp21.position, sp22.position, sp23.position, cv3);
-                    if (dt1 > 0 && dt1 < length(sp1.position + sp1.velocity - sp2.position))
-                    {
-                        float3 collisionPoint = sp1.position + normalize(sp1.position + sp1.velocity - sp2.position) * dt1;
-                        sp2.velocity = (sp1.position + (collisionPoint - sp1.position) * 0.1) - sp2.position;
-                        //sp1.velocity = float3(0, 0, 0);
-                    }
-                    if (dt2 > 0 && dt2 < length(sp2.position + sp2.velocity - sp3.position))
-                    {
-                        float3 collisionPoint = sp2.position + normalize(sp2.position + sp2.velocity - sp3.position) * dt2;
-                        sp3.velocity = (sp2.position + (collisionPoint - sp2.position) * 0.1) - sp3.position;
-                        //sp2.velocity = float3(0, 0, 0);
-                    }
-                    if (dt3 > 0 && dt3 < length(sp3.position + sp3.velocity - sp1.position))
-                    {
-                        float3 collisionPoint = sp3.position + normalize(sp3.position + sp3.velocity - sp1.position) * dt3;
-                        sp1.velocity = (sp3.position + (collisionPoint - sp3.position) * 0.1) - sp1.position;
-                        //sp3.velocity = float3(0, 0, 0);
-                    }
-  
+                    ResolveIndirectCollision(sp1.position, sp2.position, sp2.velocity, sp21.position, sp22.position, sp23.position, sp2.velocity);
+                    ResolveIndirectCollision(sp2.position, sp1.position, sp1.velocity, sp21.position, sp22.position, sp23.position, sp1.velocity);
+                    ResolveIndirectCollision(sp2.position, sp3.position, sp3.velocity, sp21.position, sp22.position, sp23.position, sp3.velocity);
+                    ResolveIndirectCollision(sp3.position, sp2.position, sp2.velocity, sp21.position, sp22.position, sp23.position, sp2.velocity);
+                    ResolveIndirectCollision(sp3.position, sp1.position, sp1.velocity, sp21.position, sp22.position, sp23.position, sp1.velocity);
+                    ResolveIndirectCollision(sp1.position, sp3.position, sp3.velocity, sp21.position, sp22.position, sp23.position, sp3.velocity);
                 SimplePoints[st.t1] = sp1;
                 SimplePoints[st.t2] = sp2;
                 SimplePoints[st.t3] = sp3;
