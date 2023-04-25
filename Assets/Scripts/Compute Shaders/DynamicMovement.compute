@@ -152,6 +152,6 @@ void DynamicMovement (uint3 id : SV_DispatchThreadID)
             }
         }
     }
-    //startPoints[id.x] = endPoints[id.x];
+    startPoints[id.x] = endPoints[id.x];
     
 }

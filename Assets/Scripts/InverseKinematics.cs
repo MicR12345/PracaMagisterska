@@ -305,15 +305,16 @@ public unsafe class InverseKinematics : MonoBehaviour
         for(int i=0; i<localNumberOfJoints; i++)
         {
             List<Assignation> assignationSingle = new List<Assignation>();
-
+            
             for (int j = 0; j < numberOfMeshes; j++)
             {
                 Vector3[] verts = skinnedMeshRenderers[j].sharedMesh.vertices;
+                Matrix4x4 localToWorld = skinnedMeshRenderers[j].transform.localToWorldMatrix;
                 int numberOfVerts = verts.Count();
                 JointBound bounds = Bounds[i];
                 for(int k=0; k<numberOfVerts; k++)
                 {
-                    bool isInside = bounds.IsInBounds(verts[k]);
+                    bool isInside = bounds.IsInBounds(localToWorld.MultiplyPoint3x4(verts[k]));
 
                     if (isInside)
                     {
@@ -360,9 +361,12 @@ public unsafe class InverseKinematics : MonoBehaviour
             for (int j = 0; j < numberOfAssignations; j++)
             {
                 Assignation singleAssignation = assignationsToJoint[j];
+                Matrix4x4 localToWorld = skinnedMeshRenderers[singleAssignation.MeshNumber].localToWorldMatrix;
+                Matrix4x4 worldToLocal = skinnedMeshRenderers[singleAssignation.MeshNumber].worldToLocalMatrix;
                 Vector3 vert = meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber];
-
+                vert = localToWorld.MultiplyPoint3x4(vert);
                 Vector3 newPt = rotation.MultiplyPoint3x4(vert - currentSegmentStart) + currentSegmentStart;
+                newPt = worldToLocal.MultiplyPoint3x4(newPt);
                 meshChanges[singleAssignation.MeshNumber][singleAssignation.VertexNumber] = newPt;
             }
             for (int j = i; j < transforms.Length; j++)
@@ -444,10 +448,11 @@ public unsafe class InverseKinematics : MonoBehaviour
         {
             for(int k=0; k < skinnedMeshRenderers[j].sharedMesh.vertices.Count(); k++)
             {
+                Matrix4x4 localToWorld = skinnedMeshRenderers[j].transform.localToWorldMatrix;
                 var positionBeforeCHange = positionsBeforeChange[j][k];
                 var positionAfterChange = skinnedMeshRenderers[j].sharedMesh.vertices[k];
-                VerticesBeforeChange[verticeIndexTracker] = positionBeforeCHange;
-                VerticesAfterChange[verticeIndexTracker] = positionAfterChange;
+                VerticesBeforeChange[verticeIndexTracker] = localToWorld.MultiplyPoint3x4(positionBeforeCHange);
+                VerticesAfterChange[verticeIndexTracker] = localToWorld.MultiplyPoint3x4(positionAfterChange);
                 verticeIndexTracker++;
             }
 

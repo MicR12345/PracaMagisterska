@@ -61,45 +61,21 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
             mesh = Instantiate(skinnedMeshRenderer.sharedMesh);
         }
         vertices = mesh.vertices;
+        Matrix4x4 localToWorld = transform.localToWorldMatrix;
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            vertices[i] = localToWorld.MultiplyPoint3x4(vertices[i]);
+        }
         triangles = mesh.triangles;
         CalculatePoints();
         pointCount = points.Count;
         GenerateTriangleData();
+
         pointData = PrepareData().ToArray();
-        
-        /*int[] tri2 = new int[triangles.Length * 2];
-        for (int i = 0; i < tri2.Length; i += 3)
-        {
-            if (i< triangles.Length)
-            {
-                tri2[i] = triangles[i];
-                tri2[i+1] = triangles[i+1];
-                tri2[i+2] = triangles[i+2];
-            }
-            else
-            {
-                int j = i - triangles.Length;
-                tri2[i] = triangles[j + 2];
-                tri2[i+1] = triangles[j+1];
-                tri2[i+2] = triangles[j];
-            }
-        }
-        mesh.triangles = tri2;
-        */
-        foreach (Anchor item in anchors)
-        {
-            for (int i = 0; i < points.Count; i++)
-            {
-                if (Vector3.Distance(pointData[i].position + transform.position,item.gameObject.transform.position)<= item.range)
-                {
-                    Vector3 v = pointData[i].position - item.gameObject.transform.position;
-                    pointData[i].ignorePhysics = 1;
-                    pointData[i].movePosition = item.gameObject.transform.position + v;
-                    item.managedPoints.Add(i);
-                    item.pointVector.Add(v);
-                }
-            }
-        }
+        //vertices = UnpackPointData();
+        //mesh.vertices = vertices;
+        //triangles = UnpackTriangleData();
+        //mesh.triangles = triangles;
         int sizeOfStruct = sizeof(SimplePointStr);
         int xd = sizeof(SimpleTriangle);
         forceComputeShader.SetFloat("k", k);
@@ -201,11 +177,11 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     public void CreateNewMesh()
     {
         Mesh meshNew = Instantiate(mesh);
-        int l = vertices.Length;
+        int l = pointData.Length;
         Vector3[] newPoints = new Vector3[l];
         for (int i = 0; i < l; i++)
         {
-            newPoints[i] = pointData[pointMap[i]].position - transform.position;
+            newPoints[i] = pointData[i].position - transform.position;
         }
         meshNew.vertices = newPoints;
         vertices = newPoints;
@@ -218,6 +194,26 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
             skinnedMeshRenderer.sharedMesh = meshNew;
         }
         mesh = meshNew;
+    }
+    public int[] UnpackTriangleData()
+    {
+        int[] triangles = new int[triangleData.Length * 3];
+        for (int i = 0; i < triangleData.Length; i++)
+        {
+            triangles[i * 3] = triangleData[i].t1;
+            triangles[i * 3 + 1] = triangleData[i].t2;
+            triangles[i * 3 + 2] = triangleData[i].t3;
+        }
+        return triangles;
+    }
+    public Vector3[] UnpackPointData()
+    {
+        Vector3[] verts = new Vector3[pointData.Length];
+        for (int i = 0; i < pointData.Length; i++)
+        {
+            verts[i] = pointData[i].position;
+        }
+        return verts;
     }
     public void CalculatePoints()
     {
@@ -366,7 +362,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         for (int i = 0; i < points.Count; i++)
         {
             SimplePointStr p = new SimplePointStr();
-            p.position = points[i].position + transform.position;
+            p.position = points[i].position;
             p.mass = points[i].mass;
             p.velocity = Vector3.zero;
             p.connectorCount = points[i].connections.Count;

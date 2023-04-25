@@ -142,22 +142,20 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
     SimplePointStr sp3 = SimplePoints[st.t3];
     for (int i = 0; i < TriangleCount; i++)
     {
-        if (i != id.x)
+        SimpleTriangle st2 = Triangles[i];
+        int samePoints = 0;
+        if (st.t1 == st2.t1 || st.t1 == st2.t2 || st.t1 == st2.t3)
+            samePoints++;
+        if (st.t2 == st2.t1 || st.t2 == st2.t2 || st.t2 == st2.t3)
+            samePoints++;
+        if (st.t3 == st2.t1 || st.t3 == st2.t2 || st.t3 == st2.t3)
+            samePoints++;
+        if (samePoints < 1)
         {
-            SimpleTriangle st2 = Triangles[i];
-            int samePoints = 0;
-            if (st.t1 == st2.t1 || st.t1 == st2.t2 || st.t1 == st2.t3)
-                samePoints++;
-            if (st.t2 == st2.t1 || st.t2 == st2.t2 || st.t2 == st2.t3)
-                samePoints++;
-            if (st.t3 == st2.t1 || st.t3 == st2.t2 || st.t3 == st2.t3)
-                samePoints++;
-            if (samePoints < 3)
-            {
-                SimplePointStr sp21 = SimplePoints[st2.t1];
-                SimplePointStr sp22 = SimplePoints[st2.t2];
-                SimplePointStr sp23 = SimplePoints[st2.t3];
-                if (CheckIfInBoundingBox(
+            SimplePointStr sp21 = SimplePoints[st2.t1];
+            SimplePointStr sp22 = SimplePoints[st2.t2];
+            SimplePointStr sp23 = SimplePoints[st2.t3];
+            if (CheckIfInBoundingBox(
                         sp1.position,
                         sp2.position,
                         sp3.position,
@@ -165,63 +163,83 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                         sp22.position,
                         sp23.position
                     ))
+            {
+                float3 cv1, cv2, cv3;
+                float dt1 = RayTriangleDistance(sp1.position, sp1.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, cv1);
+                if (dt1 > 0 && dt1 < length(sp1.velocity))
                 {
-                    float3 cv1, cv2, cv3;
-                    float dt1 = RayTriangleDistance(sp1.position, sp1.velocity, sp21.position, sp22.position, sp23.position, cv1);
-                    if (dt1 > 0 && dt1 < length(sp1.velocity))
+                    float3 ogV = sp1.velocity;
+                    float len = length(sp1.velocity);
+                    float dotpr1 = dot(cv1, sp1.velocity);
+                    float3 collisionPoint = sp1.position + normalize(sp1.velocity) * dt1;
+                    if (dotpr1 < 0)
                     {
-                        float3 ogV = sp1.velocity;
-                        float len = length(sp1.velocity);
-                        float dotpr1 = dot(cv1, sp1.velocity);
-                        float3 collisionPoint = sp1.position + normalize(sp1.velocity) * dt1;
-                        if (dotpr1 < 0)
-                        {
-                            cv1 = -cv1;
-                        }
-                        sp1.velocity = (collisionPoint + (cv1 * 0.1)) - sp1.position;
+                        cv1 = -cv1;
                     }
-                    float dt2 = RayTriangleDistance(sp2.position, sp2.velocity, sp21.position, sp22.position, sp23.position, cv2);
-                    if (dt2 > 0 && dt2 < length(sp2.velocity))
+                    sp1.velocity = (collisionPoint + (cv1 * 0.01)) - sp1.position;
+                    internalCollisions[st2.t1] = internalCollisions[st2.t1] + (sp1.velocity - ogV) / 3;
+                    internalCollisions[st2.t2] = internalCollisions[st2.t2] + (sp1.velocity - ogV) / 3;
+                    internalCollisions[st2.t3] = internalCollisions[st2.t3] + (sp1.velocity - ogV) / 3;
+                }
+                float dt2 = RayTriangleDistance(sp2.position, sp2.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, cv2);
+                if (dt2 > 0 && dt2 < length(sp2.velocity))
+                {
+                    float3 ogV = sp2.velocity;
+                    float len = length(sp2.velocity);
+                    float dotpr1 = dot(cv2, sp2.velocity);
+                    float3 collisionPoint = sp2.position + normalize(sp2.velocity) * dt2;
+                    if (dotpr1 < 0)
                     {
-                        float3 ogV = sp2.velocity;
-                        float len = length(sp2.velocity);
-                        float dotpr1 = dot(cv2, sp2.velocity);
-                        float3 collisionPoint = sp2.position + normalize(sp2.velocity) * dt2;
-                        if (dotpr1 < 0)
-                        {
-                            cv2 = -cv2;
-                        }
-                        sp2.velocity = (collisionPoint + (cv2 * 0.1)) - sp2.position;
+                        cv2 = -cv2;
                     }
-                    float dt3 = RayTriangleDistance(sp3.position, sp3.velocity, sp21.position, sp22.position, sp23.position, cv3);
-                    if (dt3 > 0 && dt3 < length(sp3.velocity))
+                    sp2.velocity = (collisionPoint + (cv2 * 0.01)) - sp2.position;
+                    internalCollisions[st2.t1] = internalCollisions[st2.t1] + (sp2.velocity - ogV) / 3;
+                    internalCollisions[st2.t2] = internalCollisions[st2.t2] + (sp2.velocity - ogV) / 3;
+                    internalCollisions[st2.t3] = internalCollisions[st2.t3] + (sp2.velocity - ogV) / 3;
+                }
+                float dt3 = RayTriangleDistance(sp3.position, sp3.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, cv3);
+                if (dt3 > 0 && dt3 < length(sp3.velocity))
+                {
+                    float3 ogV = sp3.velocity;
+                    float len = length(sp3.velocity);
+                    float dotpr1 = dot(cv3, sp3.velocity);
+                    float3 collisionPoint = sp3.position + normalize(sp3.velocity) * dt3;
+                    if (dotpr1 < 0)
                     {
-                        float3 ogV = sp3.velocity;
-                        float len = length(sp3.velocity);
-                        float dotpr1 = dot(cv3, sp3.velocity);
-                        float3 collisionPoint = sp3.position + normalize(sp3.velocity) * dt3;
-                        if (dotpr1 < 0)
-                        {
-                            cv3 = -cv3;
-                        }
-                        sp3.velocity = (collisionPoint + (cv3 * 0.1)) - sp3.position;
+                        cv3 = -cv3;
                     }
-                    ResolveIndirectCollision(sp1.position, sp2.position, sp2.velocity, sp21.position, sp22.position, sp23.position, sp2.velocity);
-                    ResolveIndirectCollision(sp2.position, sp1.position, sp1.velocity, sp21.position, sp22.position, sp23.position, sp1.velocity);
-                    ResolveIndirectCollision(sp2.position, sp3.position, sp3.velocity, sp21.position, sp22.position, sp23.position, sp3.velocity);
-                    ResolveIndirectCollision(sp3.position, sp2.position, sp2.velocity, sp21.position, sp22.position, sp23.position, sp2.velocity);
-                    ResolveIndirectCollision(sp3.position, sp1.position, sp1.velocity, sp21.position, sp22.position, sp23.position, sp1.velocity);
-                    ResolveIndirectCollision(sp1.position, sp3.position, sp3.velocity, sp21.position, sp22.position, sp23.position, sp3.velocity);
+                    sp3.velocity = (collisionPoint + (cv3 * 0.01)) - sp3.position;
+                    internalCollisions[st2.t1] = internalCollisions[st2.t1] + (sp3.velocity - ogV) / 3;
+                    internalCollisions[st2.t2] = internalCollisions[st2.t2] + (sp3.velocity - ogV) / 3;
+                    internalCollisions[st2.t3] = internalCollisions[st2.t3] + (sp3.velocity - ogV) / 3;
+                }
+                ResolveIndirectCollision(sp1.position, sp2.position, sp2.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, sp2.velocity);
+
+                ResolveIndirectCollision(sp2.position, sp1.position, sp1.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, sp1.velocity);
+
+                ResolveIndirectCollision(sp2.position, sp3.position, sp3.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, sp3.velocity);
+
+                ResolveIndirectCollision(sp3.position, sp2.position, sp2.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, sp2.velocity);
+
+                ResolveIndirectCollision(sp3.position, sp1.position, sp1.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, sp1.velocity);
+
+                ResolveIndirectCollision(sp1.position, sp3.position, sp3.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, sp3.velocity);
                 SimplePoints[st.t1] = sp1;
                 SimplePoints[st.t2] = sp2;
                 SimplePoints[st.t3] = sp3;
                 SimplePointsOut[st.t1] = sp1;
                 SimplePointsOut[st.t2] = sp2;
                 SimplePointsOut[st.t3] = sp3;
-                }
-
             }
+
+        }
+        else
+        {
+            SimplePointsOut[st.t1] = sp1;
+            SimplePointsOut[st.t2] = sp2;
+            SimplePointsOut[st.t3] = sp3;
         }
     }
+
 
 }
