@@ -161,14 +161,18 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
             
             foreach (InverseKinematics ik in IKs)
             {
+
+
+                dynamicCollisionShader.SetBuffer(0, "dynTriangles", ik.trianglesBuffer);
+                dynamicMovementShader.SetBuffer(0, "startPoints", ik.startingVerticsPositionsBuffer);
+                dynamicCollisionShader.SetBuffer(0, "endPoints", ik.finishVerticesPositionBuffer);
+                dynamicCollisionShader.SetInt("dynTCount", ik.numberOfAllTriangles / 3);
+                dynamicCollisionShader.Dispatch(0, (triangleData.Length / 128) + 1, 1, 1);
+
                 dynamicMovementShader.SetBuffer(0, "startPoints", ik.startingVerticsPositionsBuffer);
                 dynamicMovementShader.SetBuffer(0, "endPoints", ik.finishVerticesPositionBuffer);
                 dynamicMovementShader.Dispatch(0, (ik.numberOfAllVertices / 128) + 1, 1, 1);
 
-                dynamicCollisionShader.SetBuffer(0, "dynTriangles", ik.trianglesBuffer);
-                dynamicCollisionShader.SetBuffer(0, "endPoints", ik.finishVerticesPositionBuffer);
-                dynamicCollisionShader.SetInt("dynTCount", ik.numberOfAllTriangles / 3);
-                dynamicCollisionShader.Dispatch(0, (triangleData.Length / 128) + 1, 1, 1);
             }
             pointBuffer.GetData(pointData);
             CreateNewMesh();

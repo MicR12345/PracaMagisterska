@@ -100,7 +100,7 @@ float RayTriangleDistance(float3 origin, float3 direction, float3 triVert1, floa
     float t = f * dot(edge2, q);
     if (t > 0.00001f)
     {
-        CollisionVector = normalize(direction) * t;
+        CollisionVector = cross(edge1,edge2);
         return t;
     }
     else
@@ -125,6 +125,7 @@ void ResolveIndirectCollision(float3 pos1, float3 pos2, float3 vel2, float3 tri1
     newV = vel2;
     //newV = float3(0, 0, 0);
 }
+
 // Create a RenderTexture with enableRandomWrite flag and set it
 int TriangleCount;
 
@@ -198,7 +199,7 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                     internalCollisions[st2.t3] = internalCollisions[st2.t3] + (sp2.velocity - ogV) / 3;
                 }
                 float dt3 = RayTriangleDistance(sp3.position, sp3.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, cv3);
-                if (dt3 > 0 && dt3 < length(sp3.velocity))
+                if (dt3 > 0 && dt3 < 2 * length(sp3.velocity))
                 {
                     float3 ogV = sp3.velocity;
                     float len = length(sp3.velocity);
@@ -224,6 +225,7 @@ void CollisionKernel(uint3 id : SV_DispatchThreadID)
                 ResolveIndirectCollision(sp3.position, sp1.position, sp1.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, sp1.velocity);
 
                 ResolveIndirectCollision(sp1.position, sp3.position, sp3.velocity, sp21.position + sp21.velocity, sp22.position + sp22.velocity, sp23.position + sp23.velocity, sp3.velocity);
+                
                 SimplePoints[st.t1] = sp1;
                 SimplePoints[st.t2] = sp2;
                 SimplePoints[st.t3] = sp3;

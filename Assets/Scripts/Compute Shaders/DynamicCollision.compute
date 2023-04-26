@@ -99,7 +99,7 @@ float RayTriangleDistance(float3 origin, float3 direction, float3 triVert1, floa
     float t = f * dot(edge2, q);
     if (t > 0.00001f)
     {
-        CollisionVector = normalize(direction)*t;
+        CollisionVector = cross(edge1,edge2);
         return t;
     }
     else
@@ -122,6 +122,26 @@ void ResolveIndirectCollision(float3 pos1, float3 pos2, float3 vel2, float3 tri1
         //vel2 = float3(0, 0, 0);
     }
     newV = vel2;
+}
+bool ResolvePlanarCollisionLazy(float3 pos1, float3 pos2, float3 pos3, float3 vel1, float3 vel2, float3 vel3, float3 tri1, float3 tri2, float3 tri3,out float collisionOffset)
+{
+    float3 barycentric1 = (pos1 + pos2 + pos3) / 3;
+    float3 barycentric2 = ((pos1 + vel1) + (pos2 + vel2) + (pos3 + vel3)) / 3;
+    float3 delta = barycentric2 - barycentric1;
+    float3 cv;
+    float dt = RayTriangleDistance(barycentric1, delta, tri1, tri2, tri3, cv);
+    float3 collisionPoint = barycentric1 + normalize(delta) * dt;
+    float dotpr = dot(cv, delta);
+    if (dotpr < 0)
+    {
+        cv = -cv;
+    }
+    if (dt > 0 && dt <= length(delta))
+    {
+        collisionOffset = (collisionPoint + (cv * 0.1)) - barycentric1;
+        return true;
+    }
+    return false;
 }
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
@@ -153,8 +173,26 @@ void DynamicCollision(uint3 id : SV_DispatchThreadID)
                         sp21,
                         sp22,
                         sp23
+                    ) || CheckIfInBoundingBox(
+                        sp1.position + sp1.velocity,
+                        sp2.position + sp2.velocity,
+                        sp3.position + sp3.velocity,
+                        sp21,
+                        sp22,
+                        sp23
                     ))
         {
+            float3 b = (sp1.position + sp2.position + sp3.position) / 3;
+            float3 b2 = (sp21 + sp22 + sp23) / 3;
+            if (distance(b, b2) < 0.01)
+            {
+                float ddistance = -distance(b, b2) + 0.01;
+                sp1.velocity = sp1.velocity - normalize(b2 - b) * ddistance;
+                sp2.velocity = sp2.velocity - normalize(b2 - b) * ddistance;
+                sp3.velocity = sp3.velocity - normalize(b2 - b) * ddistance;
+            }
+            
+            
             float3 cv1, cv2, cv3;
             float dt1 = RayTriangleDistance(sp1.position, sp1.velocity, sp21, sp22, sp23, cv1);
             
@@ -204,6 +242,34 @@ void DynamicCollision(uint3 id : SV_DispatchThreadID)
             ResolveIndirectCollision(sp3.position, sp2.position, sp2.velocity, sp21, sp22, sp23, sp2.velocity);
             ResolveIndirectCollision(sp3.position, sp1.position, sp1.velocity, sp21, sp22, sp23, sp1.velocity);
             ResolveIndirectCollision(sp1.position, sp3.position, sp3.velocity, sp21, sp22, sp23, sp3.velocity);
+            float co;
+            if (ResolvePlanarCollisionLazy(sp1.position, sp2.position, sp3.position, sp1.velocity, sp2.velocity, sp3.velocity, sp21, sp22, sp23, co))
+            {
+                sp1.velocity = co - sp1.velocity;
+                sp2.velocity = co - sp2.velocity;
+                sp3.velocity = co - sp3.velocity;
+            }
+            float3 barycentric = (sp1.position + sp2.position + sp3.position)/3;
+            float3 barycentric2 = (sp1.position + sp1.velocity + sp2.position + sp2.velocity + sp3.position + sp3.velocity) / 3;
+            float3 barycentricV = barycentric2 - barycentric;
+            if (ResolvePlanarCollisionLazy(barycentric, sp2.position, sp3.position, barycentricV, sp2.velocity, sp3.velocity, sp21, sp22, sp23, co))
+            {
+                sp1.velocity = co - sp1.velocity;
+                sp2.velocity = co - sp2.velocity;
+                sp3.velocity = co - sp3.velocity;
+            }
+            if (ResolvePlanarCollisionLazy(sp1.position, barycentric, sp3.position, sp1.velocity, barycentricV, sp3.velocity, sp21, sp22, sp23, co))
+            {
+                sp1.velocity = co - sp1.velocity;
+                sp2.velocity = co - sp2.velocity;
+                sp3.velocity = co - sp3.velocity;
+            }
+            if (ResolvePlanarCollisionLazy(sp1.position, sp2.position, barycentric, sp1.velocity, sp2.velocity, barycentricV, sp21, sp22, sp23, co))
+            {
+                sp1.velocity = co - sp1.velocity;
+                sp2.velocity = co - sp2.velocity;
+                sp3.velocity = co - sp3.velocity;
+            }
             SimplePoints[st.t1] = sp1;
             SimplePoints[st.t2] = sp2;
             SimplePoints[st.t3] = sp3;

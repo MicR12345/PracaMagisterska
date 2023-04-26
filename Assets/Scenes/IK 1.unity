@@ -1196,16 +1196,14 @@ MonoBehaviour:
   IKs:
   - {fileID: 309445401}
   ro: 1
-  k: 0.1
+  k: 1
   friction: 0.2
-  timeScale: 1
+  timeScale: 0.5
   forceComputeShader: {fileID: 7200000, guid: 2d301b6c2c9a2944f81f94ece1ca7884, type: 3}
   collisionComputeShader: {fileID: 7200000, guid: 286b7f620ce73404d9bcfaf45afdec16, type: 3}
-  externalCollisionShader: {fileID: 7200000, guid: 97d793d953437cd4da6d711cab2611f1, type: 3}
   dynamicCollisionShader: {fileID: 7200000, guid: b0591a940a3642041a60bc8ca056d71d, type: 3}
   dynamicMovementShader: {fileID: 7200000, guid: 4627650fd98539e409168756a661c96f, type: 3}
   anchors: []
-  externalObjects: []
 --- !u!1 &1013955601
 GameObject:
   m_ObjectHideFlags: 0
@@ -1731,7 +1729,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1417883976}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.049, y: -0.145, z: 0.035}
+  m_LocalPosition: {x: 0.049, y: -0.145, z: -0.032}
   m_LocalScale: {x: 0.05, y: 0.05, z: 0.05}
   m_ConstrainProportionsScale: 0
   m_Children: []

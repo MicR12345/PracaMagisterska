@@ -25,7 +25,6 @@ RWStructuredBuffer<float3> internalCollisions;
 void PointKernel32 (uint3 id : SV_DispatchThreadID)
 {
     SimplePointStr sp = SimplePoints[id.x];
-    sp.velocity = sp.velocity + internalCollisions[id.x];
     sp.velocity = sp.velocity * (1 - friction);
     internalCollisions[id.x] = float3(0, 0, 0);
     if (sp.position.y + sp.velocity.y > 0)
@@ -55,7 +54,7 @@ void PointKernel32 (uint3 id : SV_DispatchThreadID)
             
         }
         
-
+        sp.velocity = sp.velocity + internalCollisions[id.x];
         SimplePointsOut[id.x] = sp;
     }
 }
