@@ -78,10 +78,6 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         {
             assignations.Add(item.GenerateFabricAssignations(ref pointData));
         }
-        //vertices = UnpackPointData();
-        //mesh.vertices = vertices;
-        //triangles = UnpackTriangleData();
-        //mesh.triangles = triangles;
         int sizeOfStruct = sizeof(SimplePointStr);
         int xd = sizeof(SimpleTriangle);
         pointBuffer = new ComputeBuffer(pointCount, sizeOfStruct,ComputeBufferType.Structured);
@@ -143,14 +139,12 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
 
             dynamicCollisionShader.SetBuffer(0, "SimplePoints", pointBuffer);
             dynamicCollisionShader.SetBuffer(0, "Triangles", triangleBuffer);
-            collisionComputeShader.SetInt("TriangleCount", triangles.Length);
 
             foreach (InverseKinematics ik in IKs)
             {
 
                 dynamicCollisionShader.SetBuffer(0, "SimplePoints", pointBuffer);
                 dynamicCollisionShader.SetBuffer(0, "Triangles", triangleBuffer);
-                collisionComputeShader.SetInt("TriangleCount", triangles.Length);
 
                 dynamicCollisionShader.SetBuffer(0, "dynTriangles", ik.trianglesBuffer);
                 dynamicCollisionShader.SetBuffer(0, "endPoints", ik.finishVerticesPositionBuffer);
@@ -163,11 +157,11 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     public void CreateNewMesh()
     {
         Mesh meshNew = Instantiate(mesh);
-        int l = pointData.Length;
+        int l = vertices.Length;
         Vector3[] newPoints = new Vector3[l];
         for (int i = 0; i < l; i++)
         {
-            newPoints[i] = pointData[i].position - transform.position;
+            newPoints[i] = pointData[pointMap[i]].position - transform.position;
         }
         meshNew.vertices = newPoints;
         vertices = newPoints;
@@ -180,26 +174,6 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
             skinnedMeshRenderer.sharedMesh = meshNew;
         }
         mesh = meshNew;
-    }
-    public int[] UnpackTriangleData()
-    {
-        int[] triangles = new int[triangleData.Length * 3];
-        for (int i = 0; i < triangleData.Length; i++)
-        {
-            triangles[i * 3] = triangleData[i].t1;
-            triangles[i * 3 + 1] = triangleData[i].t2;
-            triangles[i * 3 + 2] = triangleData[i].t3;
-        }
-        return triangles;
-    }
-    public Vector3[] UnpackPointData()
-    {
-        Vector3[] verts = new Vector3[pointData.Length];
-        for (int i = 0; i < pointData.Length; i++)
-        {
-            verts[i] = pointData[i].position;
-        }
-        return verts;
     }
     public void CalculatePoints()
     {
@@ -350,6 +324,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         }
         CreateNewMesh();
         pointBuffer.SetData(pointData);
+        pointBufferOut.SetData(pointData);
     }
     public List<SimplePointStr> PrepareData()
     {

@@ -3,7 +3,11 @@ guid: 42e8f3261851d6c44ac60f0ffbd45d84
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - forceComputeShader: {instanceID: 0}
+  - collisionComputeShader: {instanceID: 0}
+  - dynamicCollisionShader: {instanceID: 0}
+  - dynamicMovementShader: {instanceID: 0}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

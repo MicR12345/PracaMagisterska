@@ -705,6 +705,35 @@ Transform:
   m_Father: {fileID: 1323963245}
   m_RootOrder: -1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &632831688 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 100328, guid: 8f0565f23a2b58541a475bd3c1393052, type: 3}
+  m_PrefabInstance: {fileID: 923099801}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &632831691
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 632831688}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 42e8f3261851d6c44ac60f0ffbd45d84, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  batycentricPointsIdx: 0
+  IKs:
+  - {fileID: 309445401}
+  ro: 1
+  k: 1
+  friction: 0.1
+  timeScale: 1
+  forceComputeShader: {fileID: 7200000, guid: 2d301b6c2c9a2944f81f94ece1ca7884, type: 3}
+  collisionComputeShader: {fileID: 7200000, guid: 286b7f620ce73404d9bcfaf45afdec16, type: 3}
+  dynamicCollisionShader: {fileID: 7200000, guid: b0591a940a3642041a60bc8ca056d71d, type: 3}
+  dynamicMovementShader: {fileID: 7200000, guid: 4627650fd98539e409168756a661c96f, type: 3}
+  anchors: []
 --- !u!1 &732983529
 GameObject:
   m_ObjectHideFlags: 0
@@ -1027,6 +1056,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: unitychan
       objectReference: {fileID: 0}
+    - target: {fileID: 400316, guid: 8f0565f23a2b58541a475bd3c1393052, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.011
+      objectReference: {fileID: 0}
+    - target: {fileID: 400316, guid: 8f0565f23a2b58541a475bd3c1393052, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.003
+      objectReference: {fileID: 0}
     - target: {fileID: 400326, guid: 8f0565f23a2b58541a475bd3c1393052, type: 3}
       propertyPath: m_RootOrder
       value: 1
@@ -1196,8 +1233,8 @@ MonoBehaviour:
   IKs:
   - {fileID: 309445401}
   ro: 1
-  k: 1
-  friction: 0.2
+  k: 3
+  friction: 0.3
   timeScale: 1
   forceComputeShader: {fileID: 7200000, guid: 2d301b6c2c9a2944f81f94ece1ca7884, type: 3}
   collisionComputeShader: {fileID: 7200000, guid: 286b7f620ce73404d9bcfaf45afdec16, type: 3}
@@ -1289,35 +1326,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1013955601}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &1115752082 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 100324, guid: 8f0565f23a2b58541a475bd3c1393052, type: 3}
-  m_PrefabInstance: {fileID: 923099801}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1115752085
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1115752082}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 42e8f3261851d6c44ac60f0ffbd45d84, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  batycentricPointsIdx: 0
-  IKs:
-  - {fileID: 309445401}
-  ro: 3
-  k: 1
-  friction: 0.1
-  timeScale: 1
-  forceComputeShader: {fileID: 7200000, guid: 2d301b6c2c9a2944f81f94ece1ca7884, type: 3}
-  collisionComputeShader: {fileID: 7200000, guid: 286b7f620ce73404d9bcfaf45afdec16, type: 3}
-  dynamicCollisionShader: {fileID: 7200000, guid: b0591a940a3642041a60bc8ca056d71d, type: 3}
-  dynamicMovementShader: {fileID: 7200000, guid: 4627650fd98539e409168756a661c96f, type: 3}
-  anchors: []
 --- !u!1 &1132790001
 GameObject:
   m_ObjectHideFlags: 0
@@ -2375,7 +2383,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0603cf094d24adc41802900adeb0f15a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  fabricSimulatorGPUs: []
+  fabricSimulatorGPUs:
+  - {fileID: 923099803}
+  - {fileID: 632831691}
 --- !u!4 &2099525125
 Transform:
   m_ObjectHideFlags: 0

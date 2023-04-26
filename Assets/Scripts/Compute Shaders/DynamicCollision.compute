@@ -146,7 +146,6 @@ bool ResolvePlanarCollisionLazy(float3 pos1, float3 pos2, float3 pos3, float3 ve
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 float Time;
-int TriangleCount;
 int dynTCount;
 RWStructuredBuffer<SimplePointStr> SimplePoints;
 RWStructuredBuffer<SimpleTriangle> Triangles;
