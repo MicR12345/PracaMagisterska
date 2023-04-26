@@ -23,6 +23,7 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     ComputeBuffer debugBuffer;
 
     public List<InverseKinematics> IKs = new List<InverseKinematics>();
+    List<(List<InverseKinematics.Assignation>[],int)> assignations;
 
     Vector3[] debug;
     Vector3[] debug2;
@@ -72,6 +73,11 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         GenerateTriangleData();
 
         pointData = PrepareData().ToArray();
+        assignations = new List<(List<InverseKinematics.Assignation>[], int)>();
+        foreach (InverseKinematics item in IKs)
+        {
+            assignations.Add(item.GenerateFabricAssignations(ref pointData));
+        }
         //vertices = UnpackPointData();
         //mesh.vertices = vertices;
         //triangles = UnpackTriangleData();
@@ -152,10 +158,11 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     {
         if (FinishedInitializing)
         {
+            DeliverData();
             float t = Time.deltaTime * timeScale;
             collisionComputeShader.SetFloat("Time", t);
             forceComputeShader.SetFloat("Time", t);
-            pointBuffer.SetData(pointData);
+
             forceComputeShader.Dispatch(0, (pointCount / 128) + 1, 1, 1);
             collisionComputeShader.Dispatch(0, (triangleData.Length / 128) + 1, 1, 1);
             
@@ -164,18 +171,15 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
 
 
                 dynamicCollisionShader.SetBuffer(0, "dynTriangles", ik.trianglesBuffer);
-                dynamicMovementShader.SetBuffer(0, "startPoints", ik.startingVerticsPositionsBuffer);
                 dynamicCollisionShader.SetBuffer(0, "endPoints", ik.finishVerticesPositionBuffer);
                 dynamicCollisionShader.SetInt("dynTCount", ik.numberOfAllTriangles / 3);
                 dynamicCollisionShader.Dispatch(0, (triangleData.Length / 128) + 1, 1, 1);
 
-                dynamicMovementShader.SetBuffer(0, "startPoints", ik.startingVerticsPositionsBuffer);
-                dynamicMovementShader.SetBuffer(0, "endPoints", ik.finishVerticesPositionBuffer);
-                dynamicMovementShader.Dispatch(0, (ik.numberOfAllVertices / 128) + 1, 1, 1);
+                //dynamicMovementShader.SetBuffer(0, "startPoints", ik.startingVerticsPositionsBuffer);
+                //dynamicMovementShader.SetBuffer(0, "endPoints", ik.finishVerticesPositionBuffer);
+                //dynamicMovementShader.Dispatch(0, (ik.numberOfAllVertices / 128) + 1, 1, 1);
 
             }
-            pointBuffer.GetData(pointData);
-            CreateNewMesh();
         }
     }
     public void CreateNewMesh()
@@ -359,6 +363,16 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         Vector3 c = t3 - t1;
         float s = (a.magnitude + b.magnitude + c.magnitude) / 2f;
         return Mathf.Sqrt(s * ((s - a.magnitude) * (s - b.magnitude) * (s - c.magnitude)));
+    }
+    void DeliverData()
+    {
+        pointBuffer.GetData(pointData);
+        for (int i = 0; i < IKs.Count; i++)
+        {
+            IKs[i].PerformMeshChanges(ref pointData, assignations[i].Item1, skinnedMeshRenderer.transform, assignations[i].Item2);
+        }
+        CreateNewMesh();
+        pointBuffer.SetData(pointData);
     }
     public List<SimplePointStr> PrepareData()
     {

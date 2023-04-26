@@ -51,6 +51,8 @@ public unsafe class InverseKinematics : MonoBehaviour
     List<int[]> allNumbersOfAssignations;
     List<Assignation>[] allAsignations;
 
+    List<List<Vector3[]>> ListOfJointChangesForRegistred = new List<List<Vector3[]>>();
+
     // Remove this if you need bigger gizmos:
     [Range(0.0f, 1.0f)]
     public float gizmoSize = 0.05f;
@@ -259,18 +261,23 @@ public unsafe class InverseKinematics : MonoBehaviour
     {
         OriginalPositionsOfJoints = transforms.Select(x => x.position).ToArray();
         SolveIK();
+        
 
         var hasAnyJointMoved = HasAnyJointMoved(OriginalPositionsOfJoints);
 
         if (hasAnyJointMoved)
         {
+            for (int i = 0; i < ListOfJointChangesForRegistred.Count; i++)
+            {
+                ListOfJointChangesForRegistred[i].Add(transforms.Select(x => x.position).ToArray());
+            }
             Vector3[] jointPositionsDifference = new Vector3[OriginalPositionsOfJoints.Length];
             for (int i = 0; i < OriginalPositionsOfJoints.Length; i++)
             {
                 jointPositionsDifference[i] = transforms[i].position - OriginalPositionsOfJoints[i];
             }
 
-            List<Vector3[]> meshChanges = CalculateMeshChanges(jointPositionsDifference);
+            List<Vector3[]> meshChanges = CalculateMeshChanges();
             var positionsBeforeChange = ApplyMeshChanges(meshChanges);
             SetBufferData(positionsBeforeChange);
         }
@@ -331,7 +338,34 @@ public unsafe class InverseKinematics : MonoBehaviour
         allNumbersOfAssignations = numberOfAssignations;
         allAsignations = asignations;
     }
-    private List<Vector3[]> CalculateMeshChanges(Vector3[] jointChanges)
+    public (List<Assignation>[],int) GenerateFabricAssignations(ref SimplePointStr[] pointData)
+    {
+        List<Assignation>[] asignations = new List<Assignation>[transforms.Count()];
+        int localNumberOfJoints = transforms.Count();
+        for (int i = 0; i < localNumberOfJoints; i++)
+        {
+            List<Assignation> assignationSingle = new List<Assignation>();
+            int numberOfVerts = pointData.Count();
+            JointBound bounds = Bounds[i];
+            for (int k = 0; k < numberOfVerts; k++)
+            {
+                bool isInside = bounds.IsInBounds(pointData[k].position);
+
+                if (isInside)
+                {
+                    Assignation newAssingation = new(0, k);
+                    assignationSingle.Add(newAssingation);
+                }
+            }
+            asignations[i] = assignationSingle;
+        }
+        int id = ListOfJointChangesForRegistred.Count;
+        Vector3[] initial = transforms.Select(x => x.position).ToArray();
+        ListOfJointChangesForRegistred.Add(new List<Vector3[]>());
+        ListOfJointChangesForRegistred[id].Add(initial);
+        return (asignations,id);
+    }
+    private List<Vector3[]> CalculateMeshChanges()
     {
         List<Vector3[]> meshChanges = new List<Vector3[]>();
         for (int i = 0; i < numberOfMeshes; i++)
@@ -376,6 +410,49 @@ public unsafe class InverseKinematics : MonoBehaviour
         }
 
         return meshChanges;
+    }
+    public void PerformMeshChanges(ref SimplePointStr[] pointData,List<Assignation>[] assignations,Transform transform,int id)
+    {
+        for(int n = 0;n<ListOfJointChangesForRegistred[id].Count-1;n++)
+        {
+            Vector3[] currentPositions = (Vector3[])ListOfJointChangesForRegistred[id][n].Clone();
+
+            for (int i = 1; i < ListOfJointChangesForRegistred[id][n].Length; i++)
+            {
+                List<Assignation> assignationsToJoint = assignations[i];
+                int numberOfAssignations = assignationsToJoint.Count();
+                Vector3 desiredJointPosition = ListOfJointChangesForRegistred[id][n+1][i];
+
+                Vector3 currentSegmentStart = currentPositions[i - 1];
+
+                Vector3 desiredSegmentVector = desiredJointPosition - currentPositions[i - 1];
+
+                Vector3 currentSegmentVector = currentPositions[i] - currentPositions[i - 1];
+
+                Quaternion difference = Quaternion.FromToRotation(Vector3.Normalize(currentSegmentVector), Vector3.Normalize(desiredSegmentVector));
+
+                Matrix4x4 rotation = Matrix4x4.Rotate(difference);
+
+                for (int j = 0; j < numberOfAssignations; j++)
+                {
+                    Assignation singleAssignation = assignationsToJoint[j];
+                    Matrix4x4 localToWorld = transform.localToWorldMatrix;
+                    Matrix4x4 worldToLocal = transform.worldToLocalMatrix;
+                    Vector3 vert = pointData[singleAssignation.VertexNumber].position;
+                    vert = localToWorld.MultiplyPoint3x4(vert);
+                    Vector3 newPt = rotation.MultiplyPoint3x4(vert - currentSegmentStart) + currentSegmentStart;
+                    newPt = worldToLocal.MultiplyPoint3x4(newPt);
+                    pointData[singleAssignation.VertexNumber].position = newPt;
+                }
+                for (int j = i; j < ListOfJointChangesForRegistred[id][n].Length; j++)
+                {
+                    currentPositions[j] = rotation.MultiplyPoint3x4(currentPositions[j] - currentSegmentStart) + currentSegmentStart;
+                }
+            }
+        }
+        Vector3[] last = ListOfJointChangesForRegistred[id][ListOfJointChangesForRegistred[id].Count-1];
+        ListOfJointChangesForRegistred[id].Clear();
+        ListOfJointChangesForRegistred[id].Add(last);
     }
     public List<Vector3[]> ApplyMeshChanges(List<Vector3[]> meshChanges)
     {
@@ -474,7 +551,7 @@ public unsafe class InverseKinematics : MonoBehaviour
         finishVerticesPositionBuffer.SetData(VerticesAfterChange);
     }
 
-    internal class Assignation
+    public class Assignation
     {
         public int MeshNumber;
         public int VertexNumber;
