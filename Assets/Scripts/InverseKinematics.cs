@@ -439,9 +439,7 @@ public unsafe class InverseKinematics : MonoBehaviour
                     Matrix4x4 localToWorld = transform.localToWorldMatrix;
                     Matrix4x4 worldToLocal = transform.worldToLocalMatrix;
                     Vector3 vert = pointData[singleAssignation.VertexNumber].position;
-                    vert = localToWorld.MultiplyPoint3x4(vert);
                     Vector3 newPt = rotation.MultiplyPoint3x4(vert - currentSegmentStart) + currentSegmentStart;
-                    newPt = worldToLocal.MultiplyPoint3x4(newPt);
                     pointData[singleAssignation.VertexNumber].position = newPt;
                 }
                 for (int j = i; j < ListOfJointChangesForRegistred[id][n].Length; j++)

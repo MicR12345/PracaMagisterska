@@ -150,77 +150,41 @@ void DynamicMovement (uint3 id : SV_DispatchThreadID)
                 float dt = RayTriangleDistance(start, delta, t0, t1, t2, cv);
                 if (dt > 0 && dt < length(delta) * 1.2)
                 {
-                                    //punkt poza obiektem zmieniaj?cym pozycj?
-                    if (dot(t0 - start, t0 - end) > 0)
+                    if (dot(t0 - start, t0 - end) < 0 && distance(t0, start) <= distance(t0, end))
                     {
-                    //punkt jest w stron? zmiany, trzeba sprawdzi? odleg?o??
-                        if (dot(end - t0, delta) < 0)
-                        {
-                            if (dt < 0.07 + length(delta))
-                            {
-                                float3 dif = normalize(delta) * 0.02;
-                                SimplePoints[triangles[j].t1].position = SimplePoints[triangles[j].t1].position + dif;
-                                SimplePoints[triangles[j].t1].velocity = float3(0, 0, 0);
-
-                            }
-                        }
+                        SimplePoints[triangles[j].t1].position = SimplePoints[triangles[j].t1].position + delta;
+                        SimplePoints[triangles[j].t1].velocity = float3(0, 0, 0);
                     }
-                //punkt wewn?trz zmiany pozycji
-                    else if (dot(t0 - start, t0 - end) < 0)
+                    else if (dot(t0 - start, t0 - end) < 0 && distance(t0, end) < distance(t0, start))
                     {
-                        //SimplePoints[triangles[j].t1].position = SimplePoints[triangles[j].t1].position + delta;
-                        //SimplePoints[triangles[j].t1].velocity = float3(0, 0, 0);
+                        SimplePoints[triangles[j].t1].position = SimplePoints[triangles[j].t1].position - delta;
+                        SimplePoints[triangles[j].t1].velocity = float3(0, 0, 0);
                     }
-                
-                                //punkt poza obiektem zmieniaj?cym pozycj?
-                    if (dot(t1 - start, t1 - end) > 0)
+                    if (dot(t1 - start, t1 - end) < 0 && distance(t1, start) <= distance(t1, end))
                     {
-                    //punkt jest w stron? zmiany, trzeba sprawdzi? odleg?o??
-                        if (dot(end - t1, delta) < 0)
-                        {
-                            if (dt < 0.07 + length(delta))
-                            {
-                                float3 dif = normalize(delta) * 0.02;
-                                SimplePoints[triangles[j].t2].position = SimplePoints[triangles[j].t2].position + dif;
-                                SimplePoints[triangles[j].t2].velocity = float3(0, 0, 0);
-
-                            }
-                        }
+                        SimplePoints[triangles[j].t2].position = SimplePoints[triangles[j].t2].position + delta;
+                        SimplePoints[triangles[j].t2].velocity = float3(0, 0, 0);
                     }
-                //punkt wewn?trz zmiany pozycji
-                    else if (dot(t1 - start, t1 - end) < 0)
+                    else if (dot(t1 - start, t1 - end) < 0 && distance(t1, end) < distance(t1, start))
                     {
-                        //SimplePoints[triangles[j].t2].position = SimplePoints[triangles[j].t2].position + delta;
-                        //SimplePoints[triangles[j].t2].velocity = float3(0, 0, 0);
+                        SimplePoints[triangles[j].t2].position = SimplePoints[triangles[j].t2].position - delta;
+                        SimplePoints[triangles[j].t2].velocity = float3(0, 0, 0);
                     }
-                
-                                //punkt poza obiektem zmieniaj?cym pozycj?
-                    if (dot(t2 - start, t2 - end) > 0)
+                    if (dot(t2 - start, t2 - end) < 0 && distance(t2, start) <= distance(t2, end))
                     {
-                    //punkt jest w stron? zmiany, trzeba sprawdzi? odleg?o??
-                        if (dot(end - t2, delta) < 0)
-                        {
-                            if (dt < 0.07 + length(delta))
-                            {
-                                float3 dif = normalize(delta) * 0.02;
-                                SimplePoints[triangles[j].t3].position = SimplePoints[triangles[j].t3].position + dif;
-                                SimplePoints[triangles[j].t3].velocity = float3(0, 0, 0);
-
-                            }
-                        }
+                        SimplePoints[triangles[j].t3].position = SimplePoints[triangles[j].t3].position + delta;
+                        SimplePoints[triangles[j].t3].velocity = float3(0, 0, 0);
                     }
-                //punkt wewn?trz zmiany pozycji
-                    else if (dot(t2 - start, t2 - end) < 0)
+                    else if (dot(t2 - start, t2 - end) < 0 && distance(t2, end) < distance(t2, start))
                     {
-                        //SimplePoints[triangles[j].t3].position = SimplePoints[triangles[j].t3].position + delta;
-                        //SimplePoints[triangles[j].t3].velocity = float3(0, 0, 0);
+                        SimplePoints[triangles[j].t3].position = SimplePoints[triangles[j].t3].position - delta;
+                        SimplePoints[triangles[j].t3].velocity = float3(0, 0, 0);
                     }
                 }
 
                 
             }
         }
-        startPoints[id.x] = endPoints[id.x];
     }
     
 }

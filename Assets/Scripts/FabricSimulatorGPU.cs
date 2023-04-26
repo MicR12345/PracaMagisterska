@@ -84,30 +84,16 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         //mesh.triangles = triangles;
         int sizeOfStruct = sizeof(SimplePointStr);
         int xd = sizeof(SimpleTriangle);
-        forceComputeShader.SetFloat("k", k);
-        forceComputeShader.SetFloat("friction", friction);
         pointBuffer = new ComputeBuffer(pointCount, sizeOfStruct,ComputeBufferType.Structured);
         pointBufferOut = new ComputeBuffer(pointCount, sizeOfStruct, ComputeBufferType.Structured);
         triangleBuffer = new ComputeBuffer(triangleData.Length,sizeof(SimpleTriangle),ComputeBufferType.Structured);
 
         internalCollisionVelocitiesBuffer = new ComputeBuffer(pointCount, sizeof(Vector3), ComputeBufferType.Structured);
-        forceComputeShader.SetBuffer(0, "SimplePoints", pointBuffer);
-        forceComputeShader.SetBuffer(0, "SimplePointsOut", pointBufferOut);
-        forceComputeShader.SetBuffer(0, "internalCollisions", internalCollisionVelocitiesBuffer);
 
-        collisionComputeShader.SetBuffer(0, "SimplePoints", pointBufferOut);
-        collisionComputeShader.SetBuffer(0, "SimplePointsOut", pointBuffer);
-        collisionComputeShader.SetBuffer(0, "internalCollisions", internalCollisionVelocitiesBuffer);
-        collisionComputeShader.SetBuffer(0, "Triangles", triangleBuffer);
-        collisionComputeShader.SetInt("TriangleCount", triangles.Length);
 
-        dynamicMovementShader.SetBuffer(0, "SimplePoints", pointBuffer);
-        dynamicMovementShader.SetBuffer(0, "triangles", triangleBuffer);
-        dynamicMovementShader.SetInt("TCount", triangles.Length);
 
-        dynamicCollisionShader.SetBuffer(0, "SimplePoints", pointBuffer);
-        dynamicCollisionShader.SetBuffer(0, "Triangles", triangleBuffer);
-        collisionComputeShader.SetInt("TriangleCount", triangles.Length);
+
+
 
         triangleBuffer.SetData(triangleData);
         pointBuffer.SetData(pointData);
@@ -130,56 +116,48 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         internalCollisionVelocitiesBuffer = null;
 
     }
-    private void FixedUpdate()
-    {
-        
-        if (!executing)
-        {
-            executing = true;
-            Execute();
-            executing = false;
-        }
-    }/*
-    private void OnDrawGizmos()
-    {
-        if (FinishedInitializing)
-        {
-            for (int i = 0; i < pointData.Length; i++)
-            {
-                for (int j = 0; j < pointData[i].connectorCount; j++)
-                {
-                    Gizmos.DrawLine(pointData[i].position, pointData[pointData[i].connectorPositions.number[j]].position);
-                }
-            }
-
-        }
-    }*/
     public void Execute()
     {
         if (FinishedInitializing)
         {
+
             DeliverData();
             float t = Time.deltaTime * timeScale;
+            forceComputeShader.SetFloat("k", k);
+            forceComputeShader.SetFloat("friction", friction);
             collisionComputeShader.SetFloat("Time", t);
             forceComputeShader.SetFloat("Time", t);
 
+            forceComputeShader.SetBuffer(0, "SimplePoints", pointBuffer);
+            forceComputeShader.SetBuffer(0, "SimplePointsOut", pointBufferOut);
+            forceComputeShader.SetBuffer(0, "internalCollisions", internalCollisionVelocitiesBuffer);
+
+            collisionComputeShader.SetBuffer(0, "SimplePoints", pointBufferOut);
+            collisionComputeShader.SetBuffer(0, "SimplePointsOut", pointBuffer);
+            collisionComputeShader.SetBuffer(0, "internalCollisions", internalCollisionVelocitiesBuffer);
+            collisionComputeShader.SetBuffer(0, "Triangles", triangleBuffer);
+            collisionComputeShader.SetInt("TriangleCount", triangles.Length);
+
             forceComputeShader.Dispatch(0, (pointCount / 128) + 1, 1, 1);
             collisionComputeShader.Dispatch(0, (triangleData.Length / 128) + 1, 1, 1);
-            
+
+            dynamicCollisionShader.SetBuffer(0, "SimplePoints", pointBuffer);
+            dynamicCollisionShader.SetBuffer(0, "Triangles", triangleBuffer);
+            collisionComputeShader.SetInt("TriangleCount", triangles.Length);
+
             foreach (InverseKinematics ik in IKs)
             {
 
+                dynamicCollisionShader.SetBuffer(0, "SimplePoints", pointBuffer);
+                dynamicCollisionShader.SetBuffer(0, "Triangles", triangleBuffer);
+                collisionComputeShader.SetInt("TriangleCount", triangles.Length);
 
                 dynamicCollisionShader.SetBuffer(0, "dynTriangles", ik.trianglesBuffer);
                 dynamicCollisionShader.SetBuffer(0, "endPoints", ik.finishVerticesPositionBuffer);
                 dynamicCollisionShader.SetInt("dynTCount", ik.numberOfAllTriangles / 3);
                 dynamicCollisionShader.Dispatch(0, (triangleData.Length / 128) + 1, 1, 1);
-
-                //dynamicMovementShader.SetBuffer(0, "startPoints", ik.startingVerticsPositionsBuffer);
-                //dynamicMovementShader.SetBuffer(0, "endPoints", ik.finishVerticesPositionBuffer);
-                //dynamicMovementShader.Dispatch(0, (ik.numberOfAllVertices / 128) + 1, 1, 1);
-
             }
+            pointBuffer.GetData(pointData);
         }
     }
     public void CreateNewMesh()
@@ -366,7 +344,6 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     }
     void DeliverData()
     {
-        pointBuffer.GetData(pointData);
         for (int i = 0; i < IKs.Count; i++)
         {
             IKs[i].PerformMeshChanges(ref pointData, assignations[i].Item1, skinnedMeshRenderer.transform, assignations[i].Item2);
