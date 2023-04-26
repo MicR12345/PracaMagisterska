@@ -374,7 +374,6 @@ public unsafe class InverseKinematics : MonoBehaviour
         }
 
         Vector3[] currentPositions = (Vector3[])OriginalPositionsOfJoints.Clone();
-
         for (int i = 1; i < transforms.Length; i++)
         {
             List<Assignation> assignationsToJoint = allAsignations[i];
