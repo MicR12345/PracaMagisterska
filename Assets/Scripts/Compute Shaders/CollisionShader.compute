@@ -1,7 +1,5 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CollisionKernel
-RWStructuredBuffer<float3> Debug;
-RWStructuredBuffer<float3> Debug2;
 struct Connectors
 {
     float connectionL[24];
@@ -125,8 +123,6 @@ void ResolveIndirectCollision(float3 pos1, float3 pos2, float3 vel2, float3 tri1
     newV = vel2;
     //newV = float3(0, 0, 0);
 }
-
-// Create a RenderTexture with enableRandomWrite flag and set it
 int TriangleCount;
 
 RWStructuredBuffer<SimplePointStr> SimplePoints;

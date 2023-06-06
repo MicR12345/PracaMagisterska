@@ -42,7 +42,6 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
     public ComputeShader forceComputeShader;
     public ComputeShader collisionComputeShader;
     public ComputeShader dynamicCollisionShader;
-    public ComputeShader dynamicMovementShader;
 
     public List<Anchor> anchors = new List<Anchor>();
     bool executing = false;
@@ -62,6 +61,8 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
             mesh = Instantiate(skinnedMeshRenderer.sharedMesh);
         }
         vertices = mesh.vertices;
+
+
         Matrix4x4 localToWorld = transform.localToWorldMatrix;
         for (int i = 0; i < vertices.Length; i++)
         {
@@ -85,11 +86,6 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         triangleBuffer = new ComputeBuffer(triangleData.Length,sizeof(SimpleTriangle),ComputeBufferType.Structured);
 
         internalCollisionVelocitiesBuffer = new ComputeBuffer(pointCount, sizeof(Vector3), ComputeBufferType.Structured);
-
-
-
-
-
 
         triangleBuffer.SetData(triangleData);
         pointBuffer.SetData(pointData);
@@ -159,9 +155,11 @@ public unsafe class FabricSimulatorGPU : MonoBehaviour
         Mesh meshNew = Instantiate(mesh);
         int l = vertices.Length;
         Vector3[] newPoints = new Vector3[l];
+        Matrix4x4 worldToLocal = transform.worldToLocalMatrix;
         for (int i = 0; i < l; i++)
         {
-            newPoints[i] = pointData[pointMap[i]].position - transform.position;
+            newPoints[i] = worldToLocal.MultiplyPoint3x4
+                (pointData[pointMap[i]].position);
         }
         meshNew.vertices = newPoints;
         vertices = newPoints;
@@ -408,10 +406,4 @@ public struct SimpleTriangle
     public int t1;
     public int t2;
     public int t3;
-}
-public struct TriVert
-{
-    public Vector3 t1;
-    public Vector3 t2;
-    public Vector3 t3;
 }

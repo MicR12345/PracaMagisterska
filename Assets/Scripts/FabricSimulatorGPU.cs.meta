@@ -4,10 +4,9 @@ MonoImporter:
   externalObjects: {}
   serializedVersion: 2
   defaultReferences:
-  - forceComputeShader: {instanceID: 0}
-  - collisionComputeShader: {instanceID: 0}
-  - dynamicCollisionShader: {instanceID: 0}
-  - dynamicMovementShader: {instanceID: 0}
+  - forceComputeShader: {fileID: 7200000, guid: 2d301b6c2c9a2944f81f94ece1ca7884, type: 3}
+  - collisionComputeShader: {fileID: 7200000, guid: 286b7f620ce73404d9bcfaf45afdec16, type: 3}
+  - dynamicCollisionShader: {fileID: 7200000, guid: b0591a940a3642041a60bc8ca056d71d, type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 
